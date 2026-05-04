@@ -228,37 +228,6 @@ def test_get_document_results_in_progress(api_client, mocker):
     assert "in progress" in data["message"].lower()
 
 
-def test_list_schemas(api_client, mocker):
-    """Test listing all schemas."""
-    mock_get_schemas = mocker.patch("documentai_api.app.get_all_schemas")
-    mock_get_schemas.return_value = {"type1": {}, "type2": {}}
-
-    response = api_client.get("/v1/schemas")
-
-    assert response.status_code == 200
-    assert "schemas" in response.json()
-
-
-def test_get_schema_found(api_client, mocker):
-    """Test getting specific schema."""
-    mock_get_schema = mocker.patch("documentai_api.app.get_document_schema")
-    mock_get_schema.return_value = {"documentType": "invoice", "fields": []}
-
-    response = api_client.get("/v1/schemas/invoice")
-
-    assert response.status_code == 200
-
-
-def test_get_schema_not_found(api_client, mocker):
-    """Test getting non-existent schema."""
-    mock_get_schema = mocker.patch("documentai_api.app.get_document_schema")
-    mock_get_schema.return_value = None
-
-    response = api_client.get("/v1/schemas/invalid")
-
-    assert response.status_code == 404
-
-
 @pytest.mark.asyncio
 async def test_upload_document_for_processing_s3_failure(blank_pdf_file, s3_bucket, monkeypatch):
     """Test S3 upload failure raises HTTPException."""

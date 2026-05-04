@@ -7,6 +7,8 @@ from typing import Any, cast
 from documentai_api.config.constants import (
     CACHE_BLUEPRINT_SCHEMAS_TTL_MINUTES,
     CACHE_KEY_BLUEPRINT_SCHEMAS,
+    DictionaryBlueprintField,
+    DictionaryBlueprintSchema,
 )
 from documentai_api.logging import get_logger
 from documentai_api.services.bda import get_blueprint, get_data_automation_project
@@ -140,6 +142,19 @@ def get_document_schema(document_type: str) -> dict[str, Any] | None:
     """Get schema for specific document type."""
     schemas = get_all_schemas()
     return schemas.get(document_type)
+
+
+def get_all_fields() -> list[dict[str, Any]]:
+    schemas = get_all_schemas()
+    data: list[dict[str, Any]] = []
+    for doc_type, schema in schemas.items():
+        data.extend(
+            {DictionaryBlueprintField.DOCUMENT_TYPE: doc_type, **field}
+            for field in schema[DictionaryBlueprintSchema.FIELDS]
+        )
+
+    data.sort(key=lambda f: f[DictionaryBlueprintField.DOCUMENT_TYPE])
+    return data
 
 
 def invalidate_schema_cache() -> None:

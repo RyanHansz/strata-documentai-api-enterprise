@@ -137,3 +137,19 @@ class PreClassificationDefaults:
             "document_count: how many separate documents are visible in this image?",
         ]
     )
+
+
+class DictionaryFormatType(StrEnum):
+    JSON = "json"
+    CSV = "csv"
+
+
+class DictionaryBlueprintSchema(StrEnum):
+    FIELDS = "fields"
+
+
+class DictionaryBlueprintField(StrEnum):
+    NAME = "name"
+    TYPE = "type"
+    DESCRIPTION = "description"
+    DOCUMENT_TYPE = "documentType"

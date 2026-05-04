@@ -37,16 +37,31 @@ class ConfigResponse(BaseApiResponse):
     supported_file_types: list[str]
 
 
-class SchemaListResponse(BaseApiResponse):
-    schemas: list[str]
-
-
-class SchemaFieldResponse(BaseApiResponse):
+class DictionaryFieldItem(BaseApiResponse):
+    document_type: str
     name: str
     type: str
     description: str
 
 
-class SchemaDetailResponse(BaseApiResponse):
+class DictionaryFieldsResponse(BaseApiResponse):
+    fields: list[DictionaryFieldItem]
+
+
+class DictionarySearchResponse(BaseApiResponse):
+    fields: list[DictionaryFieldItem]
+
+
+class DictionarySchemaListResponse(BaseApiResponse):
+    schemas: list[str]
+
+
+class DictionarySchemaFieldResponse(BaseApiResponse):
+    name: str
+    type: str
+    description: str
+
+
+class DictionarySchemaDetailResponse(BaseApiResponse):
     document_type: str
-    fields: list[SchemaFieldResponse]
+    fields: list[DictionarySchemaFieldResponse]

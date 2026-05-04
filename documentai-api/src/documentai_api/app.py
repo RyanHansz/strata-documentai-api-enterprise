@@ -29,16 +29,21 @@ from documentai_api.config.constants import (
     S3_METADATA_KEY_ORIGINAL_FILE_NAME,
     SUPPORTED_CONTENT_TYPES,
     UPLOAD_METADATA_KEYS,
+    DictionaryBlueprintField,
+    DictionaryBlueprintSchema,
+    DictionaryFormatType,
     DocumentCategory,
     ProcessStatus,
 )
 from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import (
     ConfigResponse,
+    DictionaryFieldsResponse,
+    DictionarySchemaDetailResponse,
+    DictionarySchemaListResponse,
+    DictionarySearchResponse,
     HealthResponse,
     JobStatusResponse,
-    SchemaDetailResponse,
-    SchemaListResponse,
     UploadAsyncResponse,
 )
 from documentai_api.schemas.document_metadata import DocumentMetadata
@@ -46,8 +51,9 @@ from documentai_api.services import s3 as s3_service
 from documentai_api.utils import env
 from documentai_api.utils.ddb import classify_as_failed, get_ddb_by_job_id
 from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.response_builder import build_csv_response
 from documentai_api.utils.s3 import parse_s3_uri
-from documentai_api.utils.schemas import get_all_schemas, get_document_schema
+from documentai_api.utils.schemas import get_all_fields, get_all_schemas, get_document_schema
 
 logger = get_logger(__name__)
 
@@ -375,21 +381,76 @@ async def get_document_results(
         raise HTTPException(status_code=500, detail="Failed to retrieve results") from e
 
 
-@app.get("/v1/schemas", dependencies=[Depends(verify_api_key)])
-async def list_schemas() -> SchemaListResponse:
+@app.get("/v1/dictionary/schemas", dependencies=[Depends(verify_api_key)], name="getSchemaList")
+async def list_schemas() -> DictionarySchemaListResponse:
     """List all supported document types."""
     schemas = get_all_schemas()
-    return SchemaListResponse(schemas=list(schemas.keys()))
+    return DictionarySchemaListResponse(schemas=sorted(schemas.keys()))
 
 
-@app.get("/v1/schemas/{document_type}", dependencies=[Depends(verify_api_key)])
-async def get_schema(document_type: str) -> SchemaDetailResponse:
+@app.get(
+    "/v1/dictionary/schemas/{document_type}",
+    dependencies=[Depends(verify_api_key)],
+    name="getSchemaDetail",
+    response_model=DictionarySchemaDetailResponse,
+)
+async def get_schema_detail(
+    document_type: str, format: DictionaryFormatType = DictionaryFormatType.JSON
+) -> Any:
     """Get field schema for a specific document type."""
     schema = get_document_schema(document_type)
 
     if not schema:
-        raise HTTPException(
-            status_code=404, detail=f"Schema not found for document type: {document_type}"
-        )
+        raise HTTPException(status_code=404, detail=f"Schema not found: {document_type}")
 
-    return SchemaDetailResponse(**schema)
+    data = schema[DictionaryBlueprintSchema.FIELDS]
+
+    if format == DictionaryFormatType.CSV:
+        return build_csv_response(data)
+
+    return DictionarySchemaDetailResponse(document_type=document_type, fields=data)
+
+
+@app.get(
+    "/v1/dictionary/fields",
+    dependencies=[Depends(verify_api_key)],
+    name="getAllFields",
+    response_model=DictionaryFieldsResponse,
+)
+async def get_all_schema_fields(
+    format: DictionaryFormatType = DictionaryFormatType.JSON,
+) -> Any:
+    """Get all fields across all document types."""
+    data = get_all_fields()
+
+    if format == DictionaryFormatType.CSV:
+        return build_csv_response(data)
+
+    return DictionaryFieldsResponse(fields=data)
+
+
+@app.get(
+    "/v1/dictionary/search",
+    dependencies=[Depends(verify_api_key)],
+    name="searchSchemas",
+    response_model=DictionarySearchResponse,
+)
+async def search_schema_fields(
+    q: str | None = None,
+    field: DictionaryBlueprintField | None = None,
+    format: DictionaryFormatType = DictionaryFormatType.JSON,
+) -> Any:
+    """Search fields across all blueprints."""
+    data = get_all_fields()
+
+    if q:
+        query = q.lower()
+        if field:
+            data = [f for f in data if query in str(f.get(field, "")).lower()]
+        else:
+            data = [f for f in data if any(query in str(v).lower() for v in f.values())]
+
+    if format == DictionaryFormatType.CSV:
+        return build_csv_response(data)
+
+    return DictionarySearchResponse(fields=data)

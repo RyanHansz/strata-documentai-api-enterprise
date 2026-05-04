@@ -3,6 +3,8 @@
 import json
 from typing import Any
 
+from fastapi import Response
+
 from documentai_api.config.constants import (
     DocumentCategory,
     ProcessStatus,
@@ -179,4 +181,30 @@ def build_v1_api_response(
     return {k: v for k, v in base_response.items() if v is not None}
 
 
-__all__ = ["build_v1_api_response", "get_internal_api_response"]
+def build_flat_file(field_names: list[str], data: list[dict[str, Any]], delim: str = ",") -> str:
+    def escape_value(s: str) -> str:
+        if s is None:
+            return '""'
+
+        escaped = s.replace('"', '""')
+        return f'"{escaped}"'
+
+    header = delim.join(escape_value(name) for name in field_names)
+
+    rows = [delim.join(escape_value(row.get(col, "")) for col in field_names) for row in data]
+
+    return "\r\n".join([header, *rows])
+
+
+def build_csv_response(data: list[dict[str, Any]]) -> Response:
+    """Build CSV response from list of dicts."""
+    field_names = list(dict.fromkeys(k for row in data for k in row)) if data else []
+    return Response(content=build_flat_file(field_names, data), media_type="text/csv")
+
+
+__all__ = [
+    "build_csv_response",
+    "build_flat_file",
+    "build_v1_api_response",
+    "get_internal_api_response",
+]
