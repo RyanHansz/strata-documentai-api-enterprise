@@ -202,8 +202,10 @@ def test_build_v1_api_response(
     if additional_info:
         expected_response["additionalInfo"] = additional_info
 
-    if ProcessStatus(job_status).is_successful():
+    if job_status == ProcessStatus.SUCCESS.value:
         expected_response["fields"] = expected_fields_value
+    elif ProcessStatus(job_status).is_successful():
+        expected_response["fields"] = {}
 
     assert response == expected_response
 
@@ -246,3 +248,59 @@ def test_build_v1_api_response_empty_record(
         "message": "Document processed successfully",
         "jobStatus": "completed",
     }
+
+
+def test_build_v1_api_response_applies_extraction_rules(
+    s3_bucket,
+    ddb_doc_metadata_table,
+    extraction_rules_table,
+    mocker,
+):
+    import json
+
+    year = datetime.now().year
+    created_at = datetime(year, 1, 1, 12, 0, 0, tzinfo=UTC)
+    bda_completed_at = datetime(year, 1, 1, 12, 0, 10, tzinfo=UTC)
+
+    bda_results = {
+        BdaResponseFields.EXPLAINABILITY_INFO: [
+            {
+                "ssn": {"confidence": 0.95, "value": "123-45-6789"},
+                "wages": {"confidence": 0.9, "value": "50000"},
+                "extra_field": {"confidence": 0.8, "value": "ignored"},
+            }
+        ]
+    }
+    bda_results_object = s3_bucket.put_object(Key="key.json", Body=json.dumps(bda_results))
+
+    ddb_record = {
+        DocumentMetadata.FILE_NAME: "test-key",
+        DocumentMetadata.JOB_ID: "test-job-id",
+        DocumentMetadata.BDA_OUTPUT_S3_URI: f"s3://{bda_results_object.bucket_name}/{bda_results_object.key}",
+        DocumentMetadata.BDA_MATCHED_DOCUMENT_CLASS: "W2",
+        DocumentMetadata.TOTAL_PROCESSING_TIME_SECONDS: 10,
+        DocumentMetadata.BDA_COMPLETED_AT: bda_completed_at.isoformat(),
+        DocumentMetadata.CREATED_AT: created_at.isoformat(),
+        DocumentMetadata.FIELD_CONFIDENCE_SCORES: '[{"ssn": 0.95}, {"wages": 0.9}, {"extra_field": 0.8}]',
+        "tenantId": "t1",
+    }
+    ddb_doc_metadata_table.put_item(Item=ddb_record)
+
+    extraction_rules_table.put_item(
+        Item={
+            "tenantId": "t1",
+            "documentType": "W2",
+            "requiredFields": ["ssn", "wages", "federal_tax"],
+            "optionalFields": [],
+            "createdAt": "2026-01-01",
+            "updatedAt": "2026-01-01",
+        }
+    )
+
+    response = response_builder_util.build_v1_api_response("test-key", ProcessStatus.SUCCESS.value)
+
+    # extra_field filtered out, federal_tax missing
+    assert "extraField" not in response["fields"]
+    assert "ssn" in response["fields"] or "Ssn" in response["fields"]
+    assert response["missingRequiredFieldList"] == ["federalTax"]
+    assert response["responseCode"] == ResponseCodes.MISSING_FIELDS

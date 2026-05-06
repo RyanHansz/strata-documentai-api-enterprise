@@ -493,3 +493,73 @@ async def get_document_categories(format: DictionaryFormatType = DictionaryForma
         return build_csv_response(data)
 
     return {"documentCategories": DOCUMENT_CATEGORIES}
+
+
+# ==============================================================================
+# rule configuration endpoints
+# ==============================================================================
+@app.get(
+    "/v1/config/extraction-rules",
+    dependencies=[Depends(verify_api_key)],
+    name="getExtractionRules",
+)
+async def get_extraction_rules(
+    tenant_id: str,
+    document_type: str | None = None,
+) -> Any:
+    """Get extraction rules for a tenant."""
+    from documentai_api.utils.extraction_rules import get_rules
+
+    rules = get_rules(tenant_id, document_type)
+
+    if not rules:
+        raise HTTPException(status_code=404, detail="No rules found")
+    return {"rules": rules}
+
+
+@app.put(
+    "/v1/config/extraction-rules",
+    dependencies=[Depends(verify_api_key)],
+    name="putExtractionRule",
+)
+async def put_extraction_rule(
+    tenant_id: Annotated[str, Form()],
+    document_type: Annotated[str, Form()],
+    required_fields: Annotated[str, Form()],  # JSON string list of required field names
+    optional_fields: Annotated[str, Form()],  # JSON string list of optional field names
+) -> Any:
+    """Create or update an extraction rule."""
+    from documentai_api.utils.extraction_rules import upsert_rule
+
+    try:
+        parsed_required_fields = json.loads(required_fields)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400, detail="required_fields must be valid JSON array"
+        ) from None
+
+    try:
+        parsed_optional_fields = json.loads(optional_fields)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400, detail="optional_fields must be valid JSON array"
+        ) from None
+
+    rule = upsert_rule(tenant_id, document_type, parsed_required_fields, parsed_optional_fields)
+    return rule
+
+
+@app.delete(
+    "/v1/config/extraction-rules",
+    dependencies=[Depends(verify_api_key)],
+    name="deleteExtractionRule",
+)
+async def delete_extraction_rule(
+    tenant_id: str,
+    document_type: str,
+) -> Any:
+    """Delete an extraction rule."""
+    from documentai_api.utils.extraction_rules import delete_rule
+
+    delete_rule(tenant_id, document_type)
+    return {"message": "Rule deleted"}

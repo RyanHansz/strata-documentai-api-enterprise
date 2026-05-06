@@ -139,10 +139,32 @@ def build_v1_api_response(
 
         if job_status == ProcessStatus.SUCCESS.value:
             base_response["message"] = "Document processed successfully"
+
+            fields = _extract_field_values(ddb_record, include_extracted_data)
+
+            tenant_id = ddb_record.get("tenantId")
+            document_type = ddb_record.get(DocumentMetadata.BDA_MATCHED_DOCUMENT_CLASS)
+
+            if tenant_id and document_type and fields:
+                from documentai_api.utils.extraction_rules import apply_extraction_rules
+
+                rule_result = apply_extraction_rules(tenant_id, document_type, fields)
+                fields = rule_result.fields
+
+                if rule_result.missing_required_field_list:
+                    base_response["missingRequiredFieldList"] = (
+                        rule_result.missing_required_field_list
+                    )
+                    base_response["responseCode"] = ResponseCodes.MISSING_FIELDS
+                    base_response["responseMessage"] = ResponseCodes.get_message(
+                        ResponseCodes.MISSING_FIELDS
+                    )
+
+            base_response["fields"] = fields
+
         elif job_status == ProcessStatus.NO_CUSTOM_BLUEPRINT_MATCHED.value:
             base_response["message"] = "Document processed but no matching template found"
-
-        base_response.update({"fields": _extract_field_values(ddb_record, include_extracted_data)})
+            base_response["fields"] = {}
 
     # error responses
     elif job_status == ProcessStatus.FAILED.value:

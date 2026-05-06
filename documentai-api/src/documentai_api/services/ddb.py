@@ -30,6 +30,22 @@ def update_item(
     )
 
 
+def delete_item(table_name: str, key: dict[str, Any]) -> None:
+    """Delete item from DynamoDB table."""
+    table = AWSClientFactory.get_ddb_table(table_name)
+    table.delete_item(Key=key)
+
+
+def query_by_pk(table_name: str, pk_name: str, pk_value: str) -> list[dict[str, Any]]:
+    """Query DynamoDB table by partition key."""
+    table = AWSClientFactory.get_ddb_table(table_name)
+    response = table.query(
+        KeyConditionExpression=f"{pk_name} = :val",
+        ExpressionAttributeValues={":val": pk_value},
+    )
+    return response.get("Items", [])
+
+
 def query_by_key(
     table_name: str, index_name: str, key_name: str, key_value: str
 ) -> list[dict[str, Any]]:
