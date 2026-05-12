@@ -19,6 +19,7 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from fastapi.security import APIKeyHeader
 
 from documentai_api.config.constants import (
@@ -75,7 +76,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+CONFIG_EXCLUDED_ROUTES = {"/", "/health", "/config", "/openapi.json", "/docs", "/redoc"}
 
 api_key_header = APIKeyHeader(name=API_AUTH_KEY_HEADER_NAME, auto_error=False)
 
@@ -93,6 +94,15 @@ def verify_api_key(api_key: str = Depends(api_key_header)) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
+def discover_endpoints(app: FastAPI) -> dict[str, str]:
+    """Build a sorted map of operation name → path for all non-excluded routes."""
+    endpoints = {}
+    for route in app.routes:
+        if isinstance(route, APIRoute) and route.name and route.path not in CONFIG_EXCLUDED_ROUTES:
+            endpoints[route.name] = route.path
+    return dict(sorted(endpoints.items()))
+
+
 # public endpoints (no auth required)
 @app.get("/")
 def root() -> dict[str, Any]:
@@ -106,20 +116,15 @@ async def health() -> HealthResponse:
 
 @app.get("/config")
 def get_config(request: Request) -> ConfigResponse:
+    endpoints = discover_endpoints(app)
+    endpoints["postUploadSyncronous"] = f"{endpoints['postUpload']}?wait=true"
+
     return ConfigResponse(
         api_url=f"{request.url.scheme}://{request.url.netloc}",
         version=API_VERSION,
         image_tag=os.getenv("IMAGE_TAG"),
         environment=os.getenv("ENVIRONMENT", "local"),
-        endpoints={
-            "upload": "/v1/documents",
-            "uploadSync": "/v1/documents?wait=true",
-            "status": "/v1/documents/{job_id}",
-            "statusWithExtractedData": "/v1/documents/{job_id}?include_extracted_data=true",
-            "schemas": "/v1/schemas",
-            "schemaDetail": "/v1/schemas/{document_type}",
-            "health": "/health",
-        },
+        endpoints=endpoints,
         supported_file_types=list(SUPPORTED_CONTENT_TYPES),
     )
 
@@ -273,7 +278,7 @@ async def get_v1_document_processing_results(job_id: str, timeout: int) -> JobSt
 
 
 # protected endpoints (require authorization)
-@app.post("/v1/documents", dependencies=[Depends(verify_api_key)])
+@app.post("/v1/documents", dependencies=[Depends(verify_api_key)], name="postUpload")
 async def create_document(
     request: Request,
     response: Response,

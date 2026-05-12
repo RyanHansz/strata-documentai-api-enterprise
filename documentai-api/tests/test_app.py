@@ -39,6 +39,22 @@ def test_config(api_client):
     assert "supportedFileTypes" in data
 
 
+def test_config_endpoints_discovered(api_client):
+    response = api_client.get("/config")
+    endpoints = response.json()["endpoints"]
+
+    # known API endpoints should be present
+    assert "getExtractionRules" in endpoints
+    assert "getSchemaList" in endpoints
+    assert "postUpload" in endpoints
+    assert "postUploadSyncronous" in endpoints
+
+    # excluded routes should not appear
+    excluded_paths = set(endpoints.values())
+    assert "/health" not in excluded_paths
+    assert "/config" not in excluded_paths
+
+
 def test_root(api_client):
     response = api_client.get("/")
     assert response.status_code == 200
