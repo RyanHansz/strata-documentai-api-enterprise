@@ -38,7 +38,9 @@ from documentai_api.config.constants import (
 from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import (
     ConfigResponse,
+    DictionaryDocumentCategoriesResponse,
     DictionaryFieldsResponse,
+    DictionaryResponseCodesResponse,
     DictionarySchemaDetailResponse,
     DictionarySchemaListResponse,
     DictionarySearchResponse,
@@ -465,6 +467,7 @@ async def search_schema_fields(
     "/v1/dictionary/response-codes",
     dependencies=[Depends(verify_api_key)],
     name="getResponseCodes",
+    response_model=DictionaryResponseCodesResponse,
 )
 async def get_response_codes(format: DictionaryFormatType = DictionaryFormatType.JSON) -> Any:
     """Get list of response codes and their meanings."""
@@ -475,13 +478,14 @@ async def get_response_codes(format: DictionaryFormatType = DictionaryFormatType
     if format == DictionaryFormatType.CSV:
         return build_csv_response(data)
 
-    return {"responseCodes": data}
+    return DictionaryResponseCodesResponse(response_codes=data)
 
 
 @app.get(
     "/v1/dictionary/document-categories",
     dependencies=[Depends(verify_api_key)],
     name="getDocumentCategories",
+    response_model=DictionaryDocumentCategoriesResponse,
 )
 async def get_document_categories(format: DictionaryFormatType = DictionaryFormatType.JSON) -> Any:
     """Get list of supported document categories."""
@@ -492,7 +496,7 @@ async def get_document_categories(format: DictionaryFormatType = DictionaryForma
     if format == DictionaryFormatType.CSV:
         return build_csv_response(data)
 
-    return {"documentCategories": DOCUMENT_CATEGORIES}
+    return DictionaryDocumentCategoriesResponse(document_categories=DOCUMENT_CATEGORIES)
 
 
 # ==============================================================================

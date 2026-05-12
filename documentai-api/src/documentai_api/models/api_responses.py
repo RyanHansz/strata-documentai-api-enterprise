@@ -65,3 +65,16 @@ class DictionarySchemaFieldResponse(BaseApiResponse):
 class DictionarySchemaDetailResponse(BaseApiResponse):
     document_type: str
     fields: list[DictionarySchemaFieldResponse]
+
+
+class DictionaryResponseCodeItem(BaseApiResponse):
+    code: str
+    message: str
+
+
+class DictionaryResponseCodesResponse(BaseApiResponse):
+    response_codes: list[DictionaryResponseCodeItem]
+
+
+class DictionaryDocumentCategoriesResponse(BaseApiResponse):
+    document_categories: list[str]

@@ -194,17 +194,24 @@ def test_search_sorted(mock_schemas):
 def test_response_codes():
     response = client.get("/v1/dictionary/response-codes")
     assert response.status_code == 200
-    assert "responseCodes" in response.json()
-    assert len(response.json()["responseCodes"]) > 0
-    assert "code" in response.json()["responseCodes"][0]
-    assert "message" in response.json()["responseCodes"][0]
+    data = response.json()
+    assert "responseCodes" in data
+    codes = data["responseCodes"]
+    assert len(codes) > 0
+    assert "code" in codes[0]
+    assert "message" in codes[0]
+    assert all(isinstance(c["code"], str) for c in codes)
+    assert all(isinstance(c["message"], str) for c in codes)
 
 
 def test_document_categories():
     response = client.get("/v1/dictionary/document-categories")
     assert response.status_code == 200
-    assert "documentCategories" in response.json()
-    assert len(response.json()["documentCategories"]) > 0
+    data = response.json()
+    assert "documentCategories" in data
+    categories = data["documentCategories"]
+    assert len(categories) > 0
+    assert all(isinstance(c, str) for c in categories)
 
 
 # ==============================================================================
@@ -289,9 +296,16 @@ def test_response_codes_csv():
     response = client.get("/v1/dictionary/response-codes?format=csv")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
+    lines = [line for line in response.text.splitlines() if line]
+    assert lines[0] == '"code","message"'
+    assert any("000" in line for line in lines)
+    assert any("999" in line for line in lines)
 
 
 def test_document_categories_csv():
     response = client.get("/v1/dictionary/document-categories?format=csv")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
+    lines = [line for line in response.text.splitlines() if line]
+    assert lines[0] == '"category"'
+    assert any("income" in line for line in lines)
