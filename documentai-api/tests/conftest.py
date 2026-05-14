@@ -85,15 +85,6 @@ def api_skeleton_key(monkeypatch):
 
 
 @pytest.fixture
-def mock_grayscale_dependencies(mocker):
-    mock_cv2_imdecode = mocker.patch("cv2.imdecode")
-    mock_cv2_cvtcolor = mocker.patch("cv2.cvtColor")
-    mock_pil_fromarray = mocker.patch("PIL.Image.fromarray")
-
-    return mock_cv2_imdecode, mock_cv2_cvtcolor, mock_pil_fromarray
-
-
-@pytest.fixture
 def mock_metrics_aggregator_env(mocker, monkeypatch):
     """Mock environment and Athena dependencies for metrics aggregator tests."""
     monkeypatch.setenv(EnvVars.GLUE_DATABASE_NAME, "test_db")
