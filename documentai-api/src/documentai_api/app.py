@@ -293,6 +293,17 @@ async def create_document(
     file_content = await file.read()
     actual_content_type = filetype.guess_mime(file_content) or "application/octet-stream"
 
+    logger.info(
+        "Upload received",
+        extra={
+            "filename": file.filename,
+            "declared_content_type": file.content_type,
+            "detected_content_type": actual_content_type,
+            "size_bytes": len(file_content),
+            "first_bytes_hex": file_content[:16].hex() if file_content else "",
+        },
+    )
+
     if not FileValidation.is_supported(actual_content_type):
         raise HTTPException(
             status_code=400,
