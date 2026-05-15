@@ -328,11 +328,13 @@ async def create_document(
     )
 
     file.file.seek(0)
+    job_id = str(uuid.uuid4())
     file_extension = file.filename.split(".")[-1]
     file_name = file.filename.split(".")[0]
-    unique_file_name = f"{file_name}-{uuid.uuid4()}.{file_extension}"
+    # Embed the job_id in the S3 file name so the two correlate 1:1 (debugging,
+    # tracing, log greps all work from either side).
+    unique_file_name = f"{file_name}-{job_id}.{file_extension}"
     original_file_name = file.filename
-    job_id = str(uuid.uuid4())
     ddb_key = unique_file_name
 
     # DOCUMENTAI_INPUT_LOCATION includes full path (e.g. s3://bucket/input)
