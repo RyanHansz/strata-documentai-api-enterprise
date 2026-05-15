@@ -1,13 +1,16 @@
 """SQS Service methods."""
 
-from typing import Any
+from __future__ import annotations
 
-from mypy_boto3_sqs.type_defs import (
-    MessageTypeDef,
-    SendMessageResultTypeDef,
-)
+from typing import TYPE_CHECKING, Any
 
 from documentai_api.utils.aws_client_factory import AWSClientFactory
+
+if TYPE_CHECKING:
+    from mypy_boto3_sqs.type_defs import (
+        MessageTypeDef,
+        SendMessageResultTypeDef,
+    )
 
 
 def send_message(
