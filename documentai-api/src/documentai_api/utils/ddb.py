@@ -311,10 +311,13 @@ def _send_record_to_metrics_queue(object_key: str) -> None:
 
 
 def get_user_provided_document_category(object_key: str) -> DocumentCategory | None:
-    """Get user specified document type for a file.
+    """Get the user-provided DocumentCategory for a file, or None if unset/invalid.
 
-    This should always succeed - the user document type is set when the file
-    is first processed. If this fails, we have a data pipeline problem.
+    The DDB record may hold values that don't map to a DocumentCategory enum
+    member (e.g. the "Not specified" default when the API caller doesn't pick a
+    category, or the legacy "unknown" fallback from insert_initial_ddb_record).
+    Returns None in those cases rather than raising — the caller treats None as
+    "no category provided" and downstream paths handle it.
     """
     ddb_record = get_ddb_record(object_key)
     if ddb_record is None:
@@ -326,12 +329,16 @@ def get_user_provided_document_category(object_key: str) -> DocumentCategory | N
 
     if not user_provided_document_category:
         logger.warning(f"User specified document type not found for file: {object_key}")
+        return None
 
-    return (
-        DocumentCategory(user_provided_document_category)
-        if user_provided_document_category
-        else None
-    )
+    try:
+        return DocumentCategory(user_provided_document_category)
+    except ValueError:
+        logger.info(
+            f"User-provided document category '{user_provided_document_category}' "
+            f"is not a recognized DocumentCategory for {object_key}; treating as None"
+        )
+        return None
 
 
 def get_ddb_record(object_key: str) -> dict[str, Any] | None:

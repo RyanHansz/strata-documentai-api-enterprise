@@ -12,9 +12,7 @@ from documentai_api.utils.bda import (
 from documentai_api.utils.ddb import (
     classify_as_no_custom_blueprint_matched,
     classify_as_no_document_detected,
-    classify_as_not_implemented,
     classify_as_success,
-    get_user_provided_document_category,
 )
 from documentai_api.utils.models import ClassificationData
 from documentai_api.utils.response_codes import ResponseCodes
@@ -75,17 +73,10 @@ def get_matched_blueprint(bda_result_json: dict[str, Any]) -> MatchedBlueprintIn
 def process_bda_output(
     uploaded_filename: str, bda_output_bucket_name: str, bda_output_object_key: str
 ) -> dict[str, Any]:
-    user_provided_document_category = get_user_provided_document_category(uploaded_filename)
-
-    if not user_provided_document_category:
-        msg = "No user specified document type provided. Document not implemented"
-        logger.info(msg)
-
-        return classify_as_not_implemented(
-            object_key=uploaded_filename,
-            data=ClassificationData(additional_info=msg),
-        )
-
+    # The user-provided category helps routing, but it doesn't gate visibility.
+    # If BDA matched a blueprint and extracted fields, we surface them regardless;
+    # if it didn't, the downstream NO_CUSTOM_BLUEPRINT_MATCHED / NO_DOCUMENT_DETECTED
+    # paths handle the no-blueprint case.
     bda_output_s3_uri = extract_bda_output_s3_uri(bda_output_bucket_name, bda_output_object_key)
 
     if not bda_output_s3_uri:

@@ -311,6 +311,28 @@ def test_get_user_provided_document_category(
     assert category == user_provided_document_category
 
 
+@pytest.mark.parametrize(
+    "stored_value",
+    [
+        "Not specified",  # the default written by upsert_ddb when category is None
+        "unknown",  # legacy fallback from older code paths
+        "",  # empty string
+        "totally_made_up",  # anything that isn't a real enum member
+    ],
+)
+def test_get_user_provided_document_category_returns_none_for_invalid(
+    ddb_doc_metadata_table, stored_value
+):
+    """Values not matching a DocumentCategory enum member should return None, not raise."""
+    item = {
+        DocumentMetadata.FILE_NAME: "test-file",
+        DocumentMetadata.USER_PROVIDED_DOCUMENT_CATEGORY: stored_value,
+    }
+    ddb_doc_metadata_table.put_item(Item=item)
+
+    assert ddb_util.get_user_provided_document_category("test-file") is None
+
+
 def test_get_ddb_record(ddb_doc_metadata_table):
     item = {
         DocumentMetadata.FILE_NAME: "test-file",
