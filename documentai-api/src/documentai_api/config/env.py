@@ -25,6 +25,10 @@ class EnvVars(StrEnum):
     DOCUMENTAI_DOCUMENT_METADATA_JOB_ID_INDEX_NAME = (
         "DOCUMENTAI_DOCUMENT_METADATA_JOB_ID_INDEX_NAME"
     )
+    DOCUMENTAI_DOCUMENT_METADATA_BATCH_ID_INDEX_NAME = (
+        "DOCUMENTAI_DOCUMENT_METADATA_BATCH_ID_INDEX_NAME"
+    )
+    DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME = "DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME"
     DOCUMENTAI_INPUT_LOCATION = "DOCUMENTAI_INPUT_LOCATION"
     DOCUMENTAI_OUTPUT_LOCATION = "DOCUMENTAI_OUTPUT_LOCATION"
 
@@ -67,6 +71,8 @@ class AWSEnvConfig(PydanticBaseEnvConfig):
     # Document AI core
     documentai_document_metadata_table_name: str | None = None
     documentai_document_metadata_job_id_index_name: str | None = None
+    documentai_document_metadata_batch_id_index_name: str | None = None
+    documentai_document_batches_table_name: str | None = None
     documentai_input_location: str | None = None
     documentai_output_location: str | None = None
 

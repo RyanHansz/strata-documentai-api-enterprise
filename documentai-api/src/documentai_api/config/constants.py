@@ -29,6 +29,7 @@ UPLOAD_METADATA_KEYS = {
     "original_file_name": "original-file-name",
     "trace_id": "trace-id",
     "user_provided_document_category": "user-provided-document-category",
+    "batch_id": "batch-id",
 }
 
 # S3 metadata keys (for reading from S3 objects)
@@ -38,6 +39,13 @@ S3_METADATA_KEY_USER_PROVIDED_DOCUMENT_CATEGORY = UPLOAD_METADATA_KEYS[
 S3_METADATA_KEY_JOB_ID = UPLOAD_METADATA_KEYS["job_id"]
 S3_METADATA_KEY_TRACE_ID = UPLOAD_METADATA_KEYS["trace_id"]
 S3_METADATA_KEY_ORIGINAL_FILE_NAME = UPLOAD_METADATA_KEYS["original_file_name"]
+S3_METADATA_KEY_BATCH_ID = UPLOAD_METADATA_KEYS["batch_id"]
+
+# === Batch upload ===
+# Max files per batch upload — set to match BDA concurrent job limit (~25) to
+# prevent throttling. Can be raised if the BDA quota is raised.
+# TODO: make configurable via environment variable for different deployments.
+MAX_BATCH_SIZE = 25
 
 # === Metric aggregates (S3 prefixes) ===
 S3_RAW_DDB_DATA_PREFIX = "raw/utc/date"
@@ -166,6 +174,14 @@ class S3MetadataKeys:
     JOB_ID = "job-id"
     TRACE_ID = "trace-id"
     ORIGINAL_FILE_NAME = "original-file-name"
+    BATCH_ID = "batch-id"
+
+
+class BatchStatus(StrEnum):
+    UPLOADING = "uploading"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class PreClassificationDefaults:

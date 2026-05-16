@@ -157,6 +157,7 @@ def main(
     user_provided_document_category: str | None = None,
     job_id: str | None = None,
     trace_id: str | None = None,
+    batch_id: str | None = None,
 ) -> None:
     """Process uploaded document and invoke BDA.
 
@@ -169,6 +170,7 @@ def main(
         user_provided_document_category: Optional document category (will be read from S3 metadata if not provided)
         job_id: Optional job ID (will be read from S3 metadata if not provided)
         trace_id: Optional trace ID (will be read from S3 metadata if not provided)
+        batch_id: Optional batch ID (will be read from S3 metadata if not provided)
     """
     if bucket_name is None:
         input_location = get_required_env(EnvVars.DOCUMENTAI_INPUT_LOCATION)
@@ -183,10 +185,11 @@ def main(
         logger.warning("Original file name not present in S3 metadata")
         original_file_name = ""
 
-    if not all([job_id, trace_id, user_provided_document_category]):
+    if not all([job_id, trace_id, user_provided_document_category, batch_id]):
         try:
             job_id = job_id or metadata.get(S3MetadataKeys.JOB_ID)
             trace_id = trace_id or metadata.get(S3MetadataKeys.TRACE_ID)
+            batch_id = batch_id or metadata.get(S3MetadataKeys.BATCH_ID)
             user_provided_document_category = user_provided_document_category or metadata.get(
                 S3MetadataKeys.USER_PROVIDED_DOCUMENT_CATEGORY
             )
@@ -218,6 +221,7 @@ def main(
             user_provided_document_category=user_provided_document_category,
             job_id=job_id,
             trace_id=trace_id,
+            batch_id=batch_id,
         )
         existing_record = get_ddb_record(ddb_key)
 

@@ -3,7 +3,7 @@ import json
 import os
 import uuid
 from dataclasses import dataclass
-from typing import Annotated, Any, BinaryIO
+from typing import Annotated, Any
 
 import filetype  # type: ignore[import-untyped]
 from fastapi import (
@@ -20,6 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from mangum import Mangum
 
+# Batch upload endpoints live in app_batch.py — mounted as a router below.
+from documentai_api.app_batch import router as batch_router
 from documentai_api.config.constants import (
     API_VERSION,
     SUPPORTED_CONTENT_TYPES,
@@ -30,7 +32,6 @@ from documentai_api.config.constants import (
     DocumentCategory,
     FileValidation,
     ProcessStatus,
-    S3MetadataKeys,
 )
 from documentai_api.config.env import get_app_env_config, get_aws_config
 from documentai_api.logging import get_logger
@@ -50,7 +51,6 @@ from documentai_api.models.api_responses import (
     UploadAsyncResponse,
 )
 from documentai_api.schemas.document_metadata import DocumentMetadata
-from documentai_api.services import s3 as s3_service
 from documentai_api.utils.auth import verify_api_key
 from documentai_api.utils.ddb import (
     classify_as_failed,
@@ -59,8 +59,8 @@ from documentai_api.utils.ddb import (
 )
 from documentai_api.utils.models import ClassificationData
 from documentai_api.utils.response_builder import build_csv_response
-from documentai_api.utils.s3 import parse_s3_uri
 from documentai_api.utils.schemas import get_all_fields, get_all_schemas, get_document_schema
+from documentai_api.utils.uploads import upload_document_for_processing
 
 logger = get_logger(__name__)
 
@@ -69,6 +69,7 @@ app = FastAPI(
     description=APIConfig.DESCRIPTION,
     version=APIConfig.VERSION,
 )
+app.include_router(batch_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -158,67 +159,6 @@ def _get_job_status(job_id: str) -> JobStatus:
     v1_response = ddb_record.get(DocumentMetadata.V1_API_RESPONSE_JSON)
 
     return JobStatus(ddb_record, object_key, process_status, v1_response)
-
-
-async def upload_document_for_processing(
-    src_file: BinaryIO,
-    dest_path: str,
-    original_file_name: str,
-    content_type: str,
-    user_provided_document_category: DocumentCategory | None = None,
-    job_id: str | None = None,
-    trace_id: str | None = None,
-) -> None:
-    logger.debug(
-        "S3 upload started",
-        extra={
-            "dest_path": dest_path,
-            "user_provided_document_category": user_provided_document_category,
-            "category_type": type(user_provided_document_category).__name__,
-        },
-    )
-
-    bucket_name, object_key = parse_s3_uri(dest_path)
-
-    try:
-        metadata = {}
-        if user_provided_document_category:
-            # add type check for safety
-            if not isinstance(user_provided_document_category, DocumentCategory):
-                raise ValueError(
-                    f"Expected DocumentCategory, got {type(user_provided_document_category)}"
-                )
-
-            metadata[S3MetadataKeys.USER_PROVIDED_DOCUMENT_CATEGORY] = (
-                user_provided_document_category.value
-            )
-
-        metadata[S3MetadataKeys.ORIGINAL_FILE_NAME] = original_file_name
-
-        if job_id:
-            metadata[S3MetadataKeys.JOB_ID] = job_id
-
-        if trace_id:
-            metadata[S3MetadataKeys.TRACE_ID] = trace_id
-
-        logger.debug(
-            "S3: Starting actual upload",
-            extra={
-                "metadata": metadata,
-                "dest_path": dest_path,
-            },
-        )
-
-        s3_service.upload_file(bucket_name, object_key, src_file, content_type, metadata)
-        logger.info("=== S3 UPLOAD SUCCESS ===")
-
-    except Exception as e:
-        logger.error(f"Error uploading file to S3: {e}")
-        logger.info(f"=== S3 UPLOAD FAILED: {e} ===")
-        raise HTTPException(
-            status_code=500,
-            detail="Document upload failed",
-        ) from e
 
 
 async def get_v1_document_processing_results(job_id: str, timeout: int) -> JobStatusResponse:

@@ -37,3 +37,7 @@ htmlcov/
 
 # Logs
 *.log
+
+# Local Lambda packaging artifacts (from test-deploy CLI)
+build/
+lambda-env.json

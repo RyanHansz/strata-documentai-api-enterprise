@@ -6,12 +6,14 @@ from typing import Any
 
 import documentai_api.utils.documents as document_utils
 from documentai_api.config.constants import (
+    BatchStatus,
     ConfigDefaults,
     DocumentCategory,
     ProcessStatus,
 )
 from documentai_api.config.env import EnvVars, get_aws_config, get_required_env
 from documentai_api.logging import get_logger
+from documentai_api.schemas.document_batches import DocumentBatches
 from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.services import ddb as ddb_service
 from documentai_api.services import s3 as s3_service
@@ -30,6 +32,74 @@ from documentai_api.utils.schemas import get_all_schemas
 from documentai_api.utils.ssm import get_bda_percentage
 
 logger = get_logger(__name__)
+
+
+# =============================================================================
+# Batch Upload Functions
+# =============================================================================
+
+
+def create_batch(
+    batch_id: str,
+    total_files: int,
+    category: DocumentCategory | None,
+    status: BatchStatus = BatchStatus.UPLOADING,
+) -> None:
+    """Create batch record in DynamoDB."""
+    table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME)
+
+    item: dict[str, Any] = {
+        DocumentBatches.BATCH_ID: batch_id,
+        DocumentBatches.BATCH_STATUS: status.value,
+        DocumentBatches.TOTAL_FILES: total_files,
+        DocumentBatches.CREATED_AT: datetime.now(UTC).isoformat(),
+        # TTL 30 days from creation — batch records are short-lived tracking artifacts.
+        DocumentBatches.TIME_TO_LIVE: int(datetime.now(UTC).timestamp() + (30 * 24 * 60 * 60)),
+    }
+
+    if category:
+        item[DocumentBatches.CATEGORY] = (
+            category.value if isinstance(category, DocumentCategory) else category
+        )
+
+    ddb_service.put_item(table_name, item)
+
+
+def update_batch_status(
+    batch_id: str, status: BatchStatus, error_message: str | None = None
+) -> None:
+    """Update batch status (and optionally errorMessage)."""
+    table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME)
+    key = {DocumentBatches.BATCH_ID: batch_id}
+
+    update_expr = f"SET {DocumentBatches.BATCH_STATUS} = :batchStatus, {DocumentBatches.UPDATED_AT} = :updatedAt"
+    expr_values: dict[str, Any] = {
+        ":batchStatus": status.value,
+        ":updatedAt": datetime.now(UTC).isoformat(),
+    }
+
+    if error_message:
+        update_expr += f", {DocumentBatches.ERROR_MESSAGE} = :errorMessage"
+        expr_values[":errorMessage"] = error_message
+
+    ddb_service.update_item(table_name, key, update_expr, expr_values)
+
+
+def get_batch(batch_id: str) -> dict[str, Any] | None:
+    """Get batch record by batch ID."""
+    table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME)
+    key = {DocumentBatches.BATCH_ID: batch_id}
+    return ddb_service.get_item(table_name, key)
+
+
+def query_jobs_by_batch_id(batch_id: str) -> list[dict[str, Any]]:
+    """Query the document-metadata table for all jobs in a batch via the batch-id GSI."""
+    table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_METADATA_TABLE_NAME)
+    index_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_METADATA_BATCH_ID_INDEX_NAME)
+    return ddb_service.query_by_key(table_name, index_name, DocumentMetadata.BATCH_ID, batch_id)
+
+
+# =============================================================================
 
 
 def extract_region_from_bda_arn(bda_invocation_arn: str) -> str | None:
@@ -418,6 +488,7 @@ def upsert_ddb(
     pages_detected: int | None = None,
     job_id: str | None = None,
     trace_id: str | None = None,
+    batch_id: str | None = None,
     is_password_protected: bool | None = False,
     is_document_blurry: bool | None = False,
     pre_classification_document_type: str | None = None,
@@ -466,6 +537,9 @@ def upsert_ddb(
         if trace_id:
             expr_fields.append(f"{DocumentMetadata.TRACE_ID} = :traceId")
             expr_values[":traceId"] = trace_id
+        if batch_id:
+            expr_fields.append(f"{DocumentMetadata.BATCH_ID} = :batchId")
+            expr_values[":batchId"] = batch_id
         if is_password_protected is not None:
             expr_fields.append(f"{DocumentMetadata.IS_PASSWORD_PROTECTED} = :pwProt")
             expr_values[":pwProt"] = bool(is_password_protected)
@@ -493,6 +567,7 @@ def insert_minimal_ddb_record(
     process_status: ProcessStatus = ProcessStatus.NOT_STARTED,
     user_provided_document_category: str | None = None,
     trace_id: str | None = None,
+    batch_id: str | None = None,
     content_type: str | None = None,
     file_size_bytes: int | None = None,
 ) -> None:
@@ -510,6 +585,7 @@ def insert_minimal_ddb_record(
         content_type=content_type,
         job_id=job_id,
         trace_id=trace_id,
+        batch_id=batch_id,
     )
 
 
@@ -521,6 +597,7 @@ def upsert_initial_ddb_record(
     user_provided_document_category: str | None = None,
     job_id: str | None = None,
     trace_id: str | None = None,
+    batch_id: str | None = None,
 ) -> None:
     """Run preclassification on the S3 object and upsert its DDB record.
 
@@ -612,6 +689,7 @@ def upsert_initial_ddb_record(
         pages_detected=pages_detected,
         job_id=job_id,
         trace_id=trace_id,
+        batch_id=batch_id,
         is_document_blurry=is_document_blurry,
         is_password_protected=is_password_protected,
         pre_classification_document_type=pre_classification_document_type,
