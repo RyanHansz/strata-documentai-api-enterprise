@@ -9,6 +9,7 @@ from documentai_api.config.constants import (
     BatchStatus,
     ConfigDefaults,
     DocumentCategory,
+    FileValidation,
     ProcessStatus,
 )
 from documentai_api.config.env import EnvVars, get_aws_config, get_required_env
@@ -641,11 +642,7 @@ def upsert_initial_ddb_record(
     pre_classification_document_type = None
     pre_classification_confidence = None
 
-    if content_type == "image/bmp":
-        process_status = ProcessStatus.NOT_IMPLEMENTED
-        response_code = ResponseCodes.BITMAP_RECEIVED
-
-    elif is_password_protected:
+    if is_password_protected:
         process_status = ProcessStatus.PASSWORD_PROTECTED
         response_code = ResponseCodes.MISSING_FIELDS
 
@@ -677,7 +674,7 @@ def upsert_initial_ddb_record(
 
         else:
             # document passed pre-classification, proceed to extraction
-            if content_type in ["image/jpeg", "image/png", "image/bmp", "image/tiff"]:
+            if content_type in FileValidation.GRAYSCALE_CONVERTIBLE:
                 process_status = ProcessStatus.PENDING_GRAYSCALE_CONVERSION
             else:
                 process_status = ProcessStatus.NOT_STARTED
@@ -839,6 +836,24 @@ def classify_as_ai_consent_declined(object_key: str) -> dict[str, Any]:
         object_key=object_key,
         status=ProcessStatus.AI_CONSENT_DECLINED,
         internal_api_response=internal_api_response,
+    )
+
+    return internal_api_response.__dict__
+
+
+def classify_as_conversion_failed(object_key: str, error_message: str) -> dict[str, Any]:
+    """Mark file as failed due to image format conversion error."""
+    internal_api_response: InternalApiResponse = get_internal_api_response(
+        object_key=object_key,
+        response_code=ResponseCodes.INTERNAL_PROCESSING_ERROR,
+        matched_document_class=None,
+    )
+
+    update_ddb(
+        object_key=object_key,
+        status=ProcessStatus.CONVERSION_FAILED,
+        internal_api_response=internal_api_response,
+        error_message=error_message,
     )
 
     return internal_api_response.__dict__

@@ -322,6 +322,10 @@ def test_create_document_ai_consent_declined(api_client, blank_pdf_bytes, mocker
     """Test document upload with ai_consent_flag=false bypasses processing."""
     mock_insert = mocker.patch("documentai_api.app.insert_minimal_ddb_record")
     mock_classify = mocker.patch("documentai_api.app.classify_as_ai_consent_declined")
+    mock_classify.return_value = {
+        "response_code": "003",
+        "response_message": "Document not processed - AI consent not provided",
+    }
     mock_upload = mocker.patch("documentai_api.app.upload_document_for_processing")
 
     files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}

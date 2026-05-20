@@ -17,6 +17,7 @@ from tenacity import (
 import documentai_api.logging
 from documentai_api.config.constants import (
     ConfigDefaults,
+    FileValidation,
     ProcessStatus,
     S3MetadataKeys,
 )
@@ -54,7 +55,7 @@ def convert_to_grayscale(
     object_key: str, file_bytes: bytes, content_type: str
 ) -> tuple[bytes, str]:
     """Convert image to grayscale, and to PDF if over 5MB."""
-    if content_type not in ["image/jpeg", "image/png", "image/bmp", "image/tiff"]:
+    if content_type not in FileValidation.GRAYSCALE_CONVERTIBLE:
         return file_bytes, content_type
 
     try:

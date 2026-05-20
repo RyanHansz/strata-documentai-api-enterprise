@@ -147,7 +147,6 @@ def test_upload_document_build_page_builds(
     [
         ("application/zip", "test.zip"),
         ("text/plain", "test.txt"),
-        ("image/gif", "test.gif"),
     ],
 )
 def test_upload_document_build_page_invalid_file_type(

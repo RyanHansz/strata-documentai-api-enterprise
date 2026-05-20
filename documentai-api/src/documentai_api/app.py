@@ -59,6 +59,7 @@ from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils.auth import verify_api_key
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
+    classify_as_conversion_failed,
     classify_as_failed,
     get_ddb_by_job_id,
     insert_minimal_ddb_record,
@@ -66,7 +67,10 @@ from documentai_api.utils.ddb import (
 from documentai_api.utils.models import ClassificationData
 from documentai_api.utils.response_builder import build_csv_response
 from documentai_api.utils.schemas import get_all_fields, get_all_schemas, get_document_schema
-from documentai_api.utils.uploads import upload_document_for_processing
+from documentai_api.utils.uploads import (
+    ImageConversionError,
+    upload_document_for_processing,
+)
 
 logger = get_logger(__name__)
 
@@ -309,12 +313,12 @@ async def create_document(
 
     # bypass processing if AI consent not provided
     if ai_consent_flag is False:
-        classify_as_ai_consent_declined(object_key=ddb_key)
+        result = classify_as_ai_consent_declined(object_key=ddb_key)
         response.headers["X-Trace-ID"] = trace_id
-        return UploadAsyncResponse(
+        return JobStatusResponse(
             job_id=job_id,
             job_status=ProcessStatus.AI_CONSENT_DECLINED.value,
-            message="Document not processed - AI consent not provided",
+            message=result.get("response_message", "Document not processed"),
         )
 
     try:
@@ -326,6 +330,14 @@ async def create_document(
             user_provided_document_category=category,
             job_id=job_id,
             trace_id=trace_id,
+        )
+    except ImageConversionError as e:
+        result = classify_as_conversion_failed(object_key=ddb_key, error_message=str(e))
+        response.headers["X-Trace-ID"] = trace_id
+        return JobStatusResponse(
+            job_id=job_id,
+            job_status=ProcessStatus.CONVERSION_FAILED.value,
+            message=result.get("response_message", "Image conversion failed"),
         )
     except HTTPException as e:
         classify_as_failed(

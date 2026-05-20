@@ -39,6 +39,7 @@ from documentai_api.utils.document_build import (
 from documentai_api.utils.pdf import merge_pages_to_pdf
 from documentai_api.utils.s3 import parse_s3_uri
 from documentai_api.utils.uploads import (
+    ImageConversionError,
     upload_document_for_processing,
     validate_file_type,
 )
@@ -178,6 +179,8 @@ async def upload_document_build_page(
         )
     except HTTPException:
         raise
+    except ImageConversionError as e:
+        raise HTTPException(status_code=400, detail=f"Image conversion failed: {e}") from e
     except Exception as e:
         logger.error(f"Error uploading document build page {page_number} for build {build_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload page") from e
@@ -227,6 +230,8 @@ async def upload_document_build_pages_batch(
         )
     except HTTPException:
         raise
+    except ImageConversionError as e:
+        raise HTTPException(status_code=400, detail=f"Image conversion failed: {e}") from e
     except Exception as e:
         logger.error(f"Error uploading batch pages for build {build_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload pages") from e

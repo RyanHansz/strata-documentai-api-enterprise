@@ -204,6 +204,14 @@ def build_v1_api_response(
             }
         )
 
+    elif job_status == ProcessStatus.CONVERSION_FAILED.value:
+        base_response.update(
+            {
+                "jobStatus": "conversion_failed",
+                "message": "Image format conversion failed",
+            }
+        )
+
     elif ProcessStatus.is_not_supported(job_status):
         base_response.update(
             {

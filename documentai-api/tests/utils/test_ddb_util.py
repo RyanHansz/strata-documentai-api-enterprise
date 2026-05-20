@@ -473,7 +473,6 @@ def test_upsert_ddb(ddb_doc_metadata_table, mocker):
         "has_internal_response",
     ),
     [
-        ("income", "image/bmp", False, None, ProcessStatus.NOT_IMPLEMENTED, True),
         ("income", "application/pdf", True, None, ProcessStatus.PASSWORD_PROTECTED, True),
         (
             "income",

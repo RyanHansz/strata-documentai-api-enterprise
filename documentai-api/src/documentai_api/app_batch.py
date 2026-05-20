@@ -32,6 +32,7 @@ from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils.auth import verify_api_key
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
+    classify_as_conversion_failed,
     classify_as_failed,
     create_batch,
     get_batch,
@@ -40,7 +41,11 @@ from documentai_api.utils.ddb import (
     update_batch_status,
 )
 from documentai_api.utils.models import ClassificationData
-from documentai_api.utils.uploads import upload_document_for_processing, validate_file_type
+from documentai_api.utils.uploads import (
+    ImageConversionError,
+    upload_document_for_processing,
+    validate_file_type,
+)
 from documentai_api.utils.zip import extract_files_from_zip
 
 logger = get_logger(__name__)
@@ -117,6 +122,10 @@ async def _process_batch_files(
                 trace_id=trace_id,
                 batch_id=batch_id,
             )
+        except ImageConversionError as e:
+            classify_as_conversion_failed(object_key=ddb_key, error_message=str(e))
+            jobs.append({"fileName": file.filename, "jobId": job_id, "batchPosition": idx})
+            continue
         except HTTPException as e:
             classify_as_failed(
                 object_key=ddb_key,

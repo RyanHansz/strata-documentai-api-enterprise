@@ -10,9 +10,14 @@ DEFAULT_TIMEOUT = 30
 # === File validation ===
 SUPPORTED_CONTENT_TYPES = (
     "application/pdf",
+    "image/bmp",
     "image/jpeg",
     "image/png",
     "image/tiff",
+    "image/heic",
+    "image/heif",
+    "image/webp",
+    "image/gif",
 )
 
 # === Document categories ===
@@ -118,6 +123,25 @@ class DocumentCategory(StrEnum):
 class FileValidation:
     SUPPORTED_CONTENT_TYPES = (
         "application/pdf",
+        "image/bmp",
+        "image/jpeg",
+        "image/png",
+        "image/tiff",
+        "image/heic",
+        "image/heif",
+        "image/webp",
+        "image/gif",
+    )
+
+    REQUIRES_CONVERSION = (
+        "image/bmp",
+        "image/heic",
+        "image/heif",
+        "image/webp",
+        "image/gif",
+    )
+
+    GRAYSCALE_CONVERTIBLE = (
         "image/jpeg",
         "image/png",
         "image/tiff",
@@ -127,10 +151,15 @@ class FileValidation:
     def is_supported(content_type: str) -> bool:
         return content_type in FileValidation.SUPPORTED_CONTENT_TYPES
 
+    @staticmethod
+    def needs_conversion(content_type: str) -> bool:
+        return content_type in FileValidation.REQUIRES_CONVERSION
+
 
 class ProcessStatus(StrEnum):
     AI_CONSENT_DECLINED = "ai_consent_declined"
     BLURRY_DOCUMENT_DETECTED = "blurry_document_detected"
+    CONVERSION_FAILED = "conversion_failed"
     DELETED = "deleted"
     FAILED = "failed"
     MULTIPLE_DOCUMENTS_ON_SINGLE_PAGE = "multiple_documents_single_page"
@@ -148,6 +177,7 @@ class ProcessStatus(StrEnum):
     def is_completed(cls, value: str) -> bool:
         return value in [
             cls.AI_CONSENT_DECLINED,
+            cls.CONVERSION_FAILED,
             cls.SUCCESS,
             cls.FAILED,
             cls.NO_DOCUMENT_DETECTED,
@@ -159,6 +189,7 @@ class ProcessStatus(StrEnum):
         return value in [
             cls.AI_CONSENT_DECLINED,
             cls.BLURRY_DOCUMENT_DETECTED,
+            cls.CONVERSION_FAILED,
             cls.DELETED,
             cls.FAILED,
             cls.MULTIPLE_DOCUMENTS_ON_SINGLE_PAGE,
