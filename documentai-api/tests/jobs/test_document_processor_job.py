@@ -265,7 +265,7 @@ def test_main_grayscale_conversion_fails(input_image, mocker, mock_invoke):
     mock_get = mocker.patch("documentai_api.jobs.document_processor.main.get_ddb_record")
     mock_get.side_effect = [
         None,
-        {DocumentMetadata.PROCESS_STATUS: ProcessStatus.PENDING_GRAYSCALE_CONVERSION},
+        {DocumentMetadata.PROCESS_STATUS: ProcessStatus.PENDING_IMAGE_OPTIMIZATION},
     ]
 
     main(input_image.key, input_image.bucket_name)

@@ -153,7 +153,7 @@ class ProcessStatus(StrEnum):
     NOT_STARTED = "not_started"
     NOT_SAMPLED = "not_sampled"
     PASSWORD_PROTECTED = "password_protected"
-    PENDING_GRAYSCALE_CONVERSION = "pending_grayscale_conversion"
+    PENDING_IMAGE_OPTIMIZATION = "pending_image_optimization"
     PENDING_UPLOAD = "pending_upload"
     STARTED = "started"
     SUCCESS = "success"
@@ -192,7 +192,7 @@ class ProcessStatus(StrEnum):
 
     @classmethod
     def is_pending_extraction(cls, value: str) -> bool:
-        return value in [cls.PENDING_GRAYSCALE_CONVERSION, cls.NOT_STARTED]
+        return value in [cls.PENDING_IMAGE_OPTIMIZATION, cls.NOT_STARTED]
 
     @classmethod
     def is_awaiting_processing(cls, value: str) -> bool:

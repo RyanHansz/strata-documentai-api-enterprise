@@ -233,7 +233,7 @@ def main(
 
     status = existing_record.get(DocumentMetadata.PROCESS_STATUS)
 
-    if status == ProcessStatus.PENDING_GRAYSCALE_CONVERSION:
+    if status == ProcessStatus.PENDING_IMAGE_OPTIMIZATION:
         if convert_s3_object_to_grayscale(bucket_name, object_key):
             set_bda_processing_status_not_started(ddb_key)
             invoke_bda(bucket_name, object_key, ddb_key)

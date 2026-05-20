@@ -641,7 +641,7 @@ def upsert_initial_ddb_record(
     bda_percentage = get_bda_percentage(user_provided_document_category)
     response_code = ResponseCodes.SUCCESS
     internal_api_response: InternalApiResponse | None = None
-    process_status = ProcessStatus.PENDING_GRAYSCALE_CONVERSION
+    process_status = ProcessStatus.PENDING_IMAGE_OPTIMIZATION
     pages_detected = document_utils.get_page_count(file_bytes)
     is_password_protected = document_utils.is_password_protected(file_bytes)
     is_document_blurry = False
@@ -681,7 +681,7 @@ def upsert_initial_ddb_record(
         else:
             # document passed pre-classification, proceed to extraction
             if content_type in FileValidation.GRAYSCALE_CONVERTIBLE:
-                process_status = ProcessStatus.PENDING_GRAYSCALE_CONVERSION
+                process_status = ProcessStatus.PENDING_IMAGE_OPTIMIZATION
             else:
                 process_status = ProcessStatus.NOT_STARTED
 

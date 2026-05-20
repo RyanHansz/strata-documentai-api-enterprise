@@ -151,7 +151,7 @@ def test_build_completion_timing(has_bda_started_at, ddb_doc_metadata_table, moc
         ProcessStatus.STARTED,
         ProcessStatus.SUCCESS,
         ProcessStatus.FAILED,
-        ProcessStatus.PENDING_GRAYSCALE_CONVERSION,
+        ProcessStatus.PENDING_IMAGE_OPTIMIZATION,
     ],
 )
 @freeze_time("2026-01-01 12:00:10+00:00")
@@ -527,7 +527,7 @@ def test_upsert_ddb(ddb_doc_metadata_table, mocker):
                 is_document=True,
                 is_blurry=False,
             ),
-            ProcessStatus.PENDING_GRAYSCALE_CONVERSION,
+            ProcessStatus.PENDING_IMAGE_OPTIMIZATION,
             False,
         ),
         (
