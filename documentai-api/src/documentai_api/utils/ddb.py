@@ -497,6 +497,7 @@ def upsert_ddb(
     external_document_id: str | None = None,
     external_system_id: str | None = None,
     ai_consent_flag: bool | None = None,
+    upload_method: str | None = None,
 ) -> None:
     """Upsert a document-metadata DDB row by file name.
 
@@ -565,6 +566,9 @@ def upsert_ddb(
         if ai_consent_flag is not None:
             expr_fields.append(f"{DocumentMetadata.AI_CONSENT_FLAG} = :aiConsent")
             expr_values[":aiConsent"] = ai_consent_flag
+        if upload_method is not None:
+            expr_fields.append(f"{DocumentMetadata.UPLOAD_METHOD} = :uploadMethod")
+            expr_values[":uploadMethod"] = upload_method
 
         update_expr = "SET " + ", ".join(expr_fields)
         _execute_ddb_update(object_key, update_expr, expr_values)
@@ -577,6 +581,7 @@ def insert_minimal_ddb_record(
     ddb_key: str,
     original_file_name: str,
     job_id: str,
+    upload_method: str,
     process_status: ProcessStatus = ProcessStatus.NOT_STARTED,
     user_provided_document_category: str | None = None,
     trace_id: str | None = None,
@@ -605,6 +610,7 @@ def insert_minimal_ddb_record(
         external_document_id=external_document_id,
         external_system_id=external_system_id,
         ai_consent_flag=ai_consent_flag,
+        upload_method=upload_method,
     )
 
 

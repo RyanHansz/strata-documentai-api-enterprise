@@ -150,3 +150,11 @@ class DocumentSearchRequest(BaseApiResponse):
 
 class DocumentSearchResponse(BaseApiResponse):
     results: list[JobStatusResponse]
+
+
+class PresignedUploadResponse(BaseApiResponse):
+    upload_url: str
+    method: str = "PUT"
+    headers: dict[str, str]
+    job_id: str
+    expires_in: int

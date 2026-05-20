@@ -25,6 +25,7 @@ from documentai_api.config.constants import (
     BatchStatus,
     DocumentCategory,
     ProcessStatus,
+    UploadMethod,
 )
 from documentai_api.config.env import get_aws_config
 from documentai_api.logging import get_logger
@@ -44,6 +45,7 @@ from documentai_api.utils.ddb import (
 from documentai_api.utils.models import ClassificationData
 from documentai_api.utils.uploads import (
     ImageConversionError,
+    generate_unique_filename,
     upload_document_for_processing,
     validate_file_type,
 )
@@ -68,6 +70,7 @@ async def _process_batch_files(
     external_document_id: str | None = None,
     external_system_id: str | None = None,
     ai_consent_flag: bool | None = None,
+    upload_method: str = UploadMethod.BATCH,
 ) -> list[dict[str, Any]]:
     """Upload each file in a batch to S3, return per-file job info."""
     jobs: list[dict[str, Any]] = []
@@ -86,11 +89,9 @@ async def _process_batch_files(
 
         actual_content_type = await validate_file_type(file)
         job_id = str(uuid.uuid4())
-        file_extension = file.filename.split(".")[-1]
-        file_name = file.filename.split(".")[0]
         # Position-prefix keeps batch members ordered in S3 listings; job_id keeps
         # filename ↔ DDB record correlated.
-        unique_file_name = f"{idx}-{file_name}-{job_id}.{file_extension}"
+        unique_file_name = f"{idx}-{generate_unique_filename(file.filename, job_id)}"
         ddb_key = unique_file_name
         dest_path = f"{input_location}/{unique_file_name}"
 
@@ -105,6 +106,7 @@ async def _process_batch_files(
             external_document_id=external_document_id,
             external_system_id=external_system_id,
             ai_consent_flag=ai_consent_flag,
+            upload_method=upload_method,
         )
 
         if ai_consent_flag is False:
@@ -185,6 +187,7 @@ async def upload_document_batch(
             external_document_id=external_document_id,
             external_system_id=external_system_id,
             ai_consent_flag=ai_consent_flag,
+            upload_method=UploadMethod.BATCH,
         )
         update_batch_status(batch_id, status=BatchStatus.PROCESSING)
 
@@ -252,6 +255,7 @@ async def upload_zip_batch(
             external_document_id=external_document_id,
             external_system_id=external_system_id,
             ai_consent_flag=ai_consent_flag,
+            upload_method=UploadMethod.BATCH_ZIP,
         )
         update_batch_status(batch_id, status=BatchStatus.PROCESSING)
 

@@ -93,3 +93,36 @@ def get_last_modified_at(bucket: str, key: str) -> datetime:
     """Get object's last modified timestamp."""
     response = head_object(bucket, key)
     return response["LastModified"]
+
+
+def generate_presigned_url(
+    bucket: str,
+    key: str,
+    content_type: str,
+    metadata: dict[str, str] | None = None,
+    expiration: int = 900,
+) -> str:
+    """Generate a presigned URL for PUT operation.
+
+    Args:
+        bucket: S3 bucket name
+        key: S3 object key
+        content_type: Content type for the upload
+        metadata: S3 metadata dictionary
+        expiration: URL expiration time in seconds (default: 15 minutes)
+
+    Returns:
+        Presigned URL as string
+    """
+    s3_client = AWSClientFactory.get_s3_client()
+
+    params: dict[str, Any] = {
+        "Bucket": bucket,
+        "Key": key,
+        "ContentType": content_type,
+    }
+
+    if metadata:
+        params["Metadata"] = metadata
+
+    return s3_client.generate_presigned_url("put_object", Params=params, ExpiresIn=expiration)

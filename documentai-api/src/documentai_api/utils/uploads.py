@@ -25,6 +25,15 @@ class ImageConversionError(Exception):
     """Raised when image format conversion fails."""
 
 
+def generate_unique_filename(filename: str, job_id: str) -> str:
+    """Generate a unique filename embedding the job_id."""
+    if not filename:
+        raise ValueError("Invalid filename")
+    file_name = filename.split(".")[0]
+    file_extension = filename.split(".")[-1]
+    return f"{file_name}-{job_id}.{file_extension}"
+
+
 async def validate_file_type(file: UploadFile) -> str:
     """Read the file, detect its MIME type, verify it's supported, reset the read pointer.
 

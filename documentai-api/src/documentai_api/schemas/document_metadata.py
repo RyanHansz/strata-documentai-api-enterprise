@@ -16,6 +16,7 @@ class DocumentMetadata:
     EXTERNAL_DOCUMENT_ID = "externalDocumentId"
     EXTERNAL_SYSTEM_ID = "externalSystemId"
     AI_CONSENT_FLAG = "aiConsentFlag"
+    UPLOAD_METHOD = "uploadMethod"
     V1_API_RESPONSE_JSON = "v1ApiResponseJson"
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"

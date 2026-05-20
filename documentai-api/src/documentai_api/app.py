@@ -25,6 +25,9 @@ from documentai_api.app_batch import router as batch_router
 
 # Document build (multi-page upload) endpoints live in app_build.py — mounted as a router below.
 from documentai_api.app_build import router as build_router
+
+# Presigned URL endpoints live in app_presigned.py — mounted as a router below.
+from documentai_api.app_presigned import router as presigned_router
 from documentai_api.config.constants import (
     API_VERSION,
     APIConfig,
@@ -35,6 +38,7 @@ from documentai_api.config.constants import (
     DocumentCategory,
     FileValidation,
     ProcessStatus,
+    UploadMethod,
 )
 from documentai_api.config.env import get_app_env_config, get_aws_config
 from documentai_api.logging import get_logger
@@ -69,6 +73,7 @@ from documentai_api.utils.response_builder import build_csv_response
 from documentai_api.utils.schemas import get_all_fields, get_all_schemas, get_document_schema
 from documentai_api.utils.uploads import (
     ImageConversionError,
+    generate_unique_filename,
     upload_document_for_processing,
 )
 
@@ -81,6 +86,7 @@ app = FastAPI(
 )
 app.include_router(batch_router)
 app.include_router(build_router)
+app.include_router(presigned_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -292,11 +298,7 @@ async def create_document(
 
     file.file.seek(0)
     job_id = str(uuid.uuid4())
-    file_extension = file.filename.split(".")[-1]
-    file_name = file.filename.split(".")[0]
-    # Embed the job_id in the S3 file name so the two correlate 1:1 (debugging,
-    # tracing, log greps all work from either side).
-    unique_file_name = f"{file_name}-{job_id}.{file_extension}"
+    unique_file_name = generate_unique_filename(file.filename, job_id)
     original_file_name = file.filename
     ddb_key = unique_file_name
 
@@ -314,6 +316,7 @@ async def create_document(
         external_document_id=external_document_id,
         external_system_id=external_system_id,
         ai_consent_flag=ai_consent_flag,
+        upload_method=UploadMethod.DIRECT,
     )
 
     # bypass processing if AI consent not provided

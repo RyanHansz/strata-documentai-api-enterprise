@@ -154,6 +154,7 @@ class ProcessStatus(StrEnum):
     NOT_SAMPLED = "not_sampled"
     PASSWORD_PROTECTED = "password_protected"
     PENDING_GRAYSCALE_CONVERSION = "pending_grayscale_conversion"
+    PENDING_UPLOAD = "pending_upload"
     STARTED = "started"
     SUCCESS = "success"
 
@@ -194,6 +195,10 @@ class ProcessStatus(StrEnum):
         return value in [cls.PENDING_GRAYSCALE_CONVERSION, cls.NOT_STARTED]
 
     @classmethod
+    def is_awaiting_processing(cls, value: str) -> bool:
+        return value in [cls.NOT_STARTED, cls.PENDING_UPLOAD]
+
+    @classmethod
     def is_successful(cls, value: str) -> bool:
         return value in [
             cls.SUCCESS,
@@ -218,6 +223,14 @@ class BatchStatus(StrEnum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class UploadMethod(StrEnum):
+    DIRECT = "direct"
+    PRESIGNED = "presigned"
+    BATCH = "batch"
+    BATCH_ZIP = "batch_zip"
+    BUILD = "build"
 
 
 class DocumentBuildStatus(StrEnum):

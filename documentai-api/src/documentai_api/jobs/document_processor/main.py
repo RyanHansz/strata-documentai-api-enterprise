@@ -209,7 +209,9 @@ def main(
     # Otherwise we'd re-classify when grayscale conversion overwrites the input
     # file in S3 and fires another event, looping the pipeline.
     needs_preclassification = existing_record is None or (
-        existing_record.get(DocumentMetadata.PROCESS_STATUS) == ProcessStatus.NOT_STARTED
+        ProcessStatus.is_awaiting_processing(
+            existing_record.get(DocumentMetadata.PROCESS_STATUS, "")
+        )
         and DocumentMetadata.PRE_CLASSIFICATION_DOCUMENT_TYPE not in existing_record
     )
 
@@ -242,7 +244,7 @@ def main(
                 object_key=ddb_key,
                 data=ClassificationData(additional_info="File too large after conversion"),
             )
-    elif status == ProcessStatus.NOT_STARTED:
+    elif status and ProcessStatus.is_awaiting_processing(status):
         # ready for BDA immediately
         invoke_bda(bucket_name, object_key, ddb_key)
     else:
