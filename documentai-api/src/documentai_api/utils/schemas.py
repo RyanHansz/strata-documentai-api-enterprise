@@ -56,7 +56,7 @@ def _fetch_schemas_from_bda() -> dict[str, Any]:
     except Exception as e:
         msg = f"Failed to fetch schemas from BDA: {e}"
         logger.error(msg)
-        return {}
+        raise
 
 
 def _extract_fields(schema: dict[str, Any]) -> list[dict[str, Any]]:
@@ -127,7 +127,10 @@ def get_all_schemas() -> dict[str, Any]:
 
     # fetch from BDA and cache
     schemas = _fetch_schemas_from_bda()
-    cache.add(Cache.KEY_BLUEPRINT_SCHEMAS, schemas, ttl_minutes=Cache.TTL_BLUEPRINT_SCHEMAS_MINUTES)
+    if schemas:
+        cache.add(
+            Cache.KEY_BLUEPRINT_SCHEMAS, schemas, ttl_minutes=Cache.TTL_BLUEPRINT_SCHEMAS_MINUTES
+        )
 
     return schemas
 

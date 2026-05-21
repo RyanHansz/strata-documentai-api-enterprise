@@ -554,7 +554,11 @@ async def search_documents(body: DocumentSearchRequest) -> DocumentSearchRespons
 )
 async def list_schemas() -> DictionarySchemaListResponse:
     """List all supported document types."""
-    schemas = get_all_schemas()
+    try:
+        schemas = get_all_schemas()
+    except Exception as e:
+        logger.error(f"Failed to retrieve schemas: {e}")
+        raise HTTPException(status_code=503, detail="Unable to retrieve dictionary schemas") from e
     return DictionarySchemaListResponse(schemas=sorted(schemas.keys()))
 
 
@@ -569,7 +573,13 @@ async def get_schema_detail(
     document_type: str, format: DictionaryFormatType = DictionaryFormatType.JSON
 ) -> Any:
     """Get field schema for a specific document type."""
-    schema = get_document_schema(document_type)
+    try:
+        schema = get_document_schema(document_type)
+    except Exception as e:
+        logger.error(f"Failed to retrieve schema for {document_type}: {e}")
+        raise HTTPException(
+            status_code=503, detail="Unable to retrieve dictionary schema detail"
+        ) from e
 
     if not schema:
         raise HTTPException(status_code=404, detail=f"Schema not found: {document_type}")
@@ -593,7 +603,14 @@ async def get_all_schema_fields(
     format: DictionaryFormatType = DictionaryFormatType.JSON,
 ) -> Any:
     """Get all fields across all document types."""
-    data = get_all_fields()
+    try:
+        data = get_all_fields()
+    except Exception as e:
+        logger.error(f"Failed to retrieve fields: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to retrieve dictionary fields",
+        ) from e
 
     if format == DictionaryFormatType.CSV:
         return build_csv_response(data)
@@ -614,7 +631,14 @@ async def search_schema_fields(
     format: DictionaryFormatType = DictionaryFormatType.JSON,
 ) -> Any:
     """Search fields across all blueprints."""
-    data = get_all_fields()
+    try:
+        data = get_all_fields()
+    except Exception as e:
+        logger.error(f"Failed to retrieve fields for search: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to search dictionary fields",
+        ) from e
 
     if q:
         query = q.lower()
