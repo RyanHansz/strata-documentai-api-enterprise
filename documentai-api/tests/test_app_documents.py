@@ -5,6 +5,8 @@ import pytest
 from documentai_api.models.api_responses import JobStatusResponse
 from documentai_api.utils.jobs import JobStatus
 
+TEST_JOB_ID = "00000000-0000-4000-8000-000000000001"
+
 
 @pytest.fixture(autouse=True)
 def _disable_auth(disable_auth):
@@ -17,7 +19,7 @@ def test_document_upload_no_file(api_client):
 
 
 def test_document_status_not_found(ddb_doc_metadata_table_resource, api_client):
-    response = api_client.get("/v1/documents/fake-job-id")
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
     assert response.status_code == 404
 
 
@@ -31,9 +33,7 @@ def test_get_document_results_with_extracted_data(api_client, mocker):
         v1_response_json='{"jobId": "test-job-id", "jobStatus": "success", "message": "Document processed successfully"}',
     )
 
-    mock_build_api_response = mocker.patch(
-        "documentai_api.utils.response_builder.build_v1_api_response"
-    )
+    mock_build_api_response = mocker.patch("documentai_api.app_documents.build_v1_api_response")
     mock_build_api_response.return_value = {
         "jobId": "test-job-id",
         "jobStatus": "success",
@@ -41,7 +41,7 @@ def test_get_document_results_with_extracted_data(api_client, mocker):
         "extractedData": {},
     }
 
-    response = api_client.get("/v1/documents/test-job-id?include_extracted_data=true")
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}?include_extracted_data=true")
 
     assert response.status_code == 200
     mock_build_api_response.assert_called_once_with(
@@ -61,7 +61,7 @@ def test_get_document_results_in_progress(api_client, mocker):
         v1_response_json=None,
     )
 
-    response = api_client.get("/v1/documents/test-job-id")
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 200
     data = response.json()
@@ -227,7 +227,7 @@ def test_get_document_results_error_handling(api_client, mocker):
     mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
     mock_get_job_status.side_effect = Exception("Unexpected error")
 
-    response = api_client.get("/v1/documents/test-job-id")
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 500
     assert "Failed to retrieve results" in response.json()["detail"]
@@ -312,7 +312,7 @@ def test_delete_document_success(api_client, mocker):
     mock_s3_delete = mocker.patch("documentai_api.services.s3.delete_object")
     mock_update_ddb = mocker.patch("documentai_api.utils.ddb.update_ddb")
 
-    response = api_client.delete("/v1/documents/job-1")
+    response = api_client.delete(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 204
     mock_s3_delete.assert_called_once()
@@ -326,7 +326,7 @@ def test_delete_document_not_found(api_client, mocker):
         ddb_record=None, object_key=None, process_status=None, v1_response_json=None
     )
 
-    response = api_client.delete("/v1/documents/fake-job")
+    response = api_client.delete(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 404
 
@@ -341,7 +341,7 @@ def test_delete_document_still_processing(api_client, mocker):
         v1_response_json=None,
     )
 
-    response = api_client.delete("/v1/documents/job-1")
+    response = api_client.delete(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 400
     assert "still processing" in response.json()["detail"]
@@ -357,7 +357,7 @@ def test_delete_document_already_deleted(api_client, mocker):
         v1_response_json=None,
     )
 
-    response = api_client.delete("/v1/documents/job-1")
+    response = api_client.delete(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 404
 
@@ -372,7 +372,7 @@ def test_get_document_results_wrong_tenant(api_client, mocker):
         v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
     )
 
-    response = api_client.get("/v1/documents/job-1")
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 404
 
@@ -387,7 +387,7 @@ def test_delete_document_wrong_tenant(api_client, mocker):
         v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
     )
 
-    response = api_client.delete("/v1/documents/job-1")
+    response = api_client.delete(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 404
 
@@ -419,7 +419,7 @@ def test_get_document_results_deleted_returns_404(api_client, mocker):
         v1_response_json='{"jobId": "job-1", "jobStatus": "deleted", "message": "Document has been deleted"}',
     )
 
-    response = api_client.get("/v1/documents/job-1")
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
 
     assert response.status_code == 404
 
@@ -492,7 +492,7 @@ def test_search_documents_with_extracted_data(api_client, mocker):
         v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
     )
 
-    mock_build = mocker.patch("documentai_api.utils.response_builder.build_v1_api_response")
+    mock_build = mocker.patch("documentai_api.app_documents.build_v1_api_response")
     mock_build.return_value = {
         "jobId": "job-1",
         "jobStatus": "success",
@@ -569,3 +569,115 @@ def test_create_document_sync_default_timeout(api_client, blank_pdf_bytes, mocke
     expected = ConfigDefaults.MAX_WAIT_SECONDS - ConfigDefaults.ALB_TIMEOUT_BUFFER_SECONDS
     actual_timeout = mock_poll.call_args[0][1]
     assert actual_timeout == expected
+
+
+def test_get_document_invalid_uuid_returns_422(api_client):
+    """Test GET with non-UUID job_id returns 422."""
+    response = api_client.get("/v1/documents/not-a-uuid")
+    assert response.status_code == 422
+
+
+def test_delete_document_invalid_uuid_returns_422(api_client):
+    """Test DELETE with non-UUID job_id returns 422."""
+    response = api_client.delete("/v1/documents/not-a-uuid")
+    assert response.status_code == 422
+
+
+def test_get_document_enumeration_leak_invariant(api_client, mocker):
+    """Test that wrong-tenant and deleted responses are identical to prevent enumeration."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+
+    # Wrong tenant
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "other-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+    wrong_tenant_response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
+
+    # Deleted
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+        object_key="test.pdf",
+        process_status="deleted",
+        v1_response_json=None,
+    )
+    deleted_response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
+
+    assert wrong_tenant_response.status_code == deleted_response.status_code == 404
+    assert wrong_tenant_response.json() == deleted_response.json()
+
+
+def test_get_document_trace_id_echoed(api_client, mocker):
+    """Test X-Trace-ID is echoed on GET endpoint."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    response = api_client.get(
+        f"/v1/documents/{TEST_JOB_ID}", headers={"X-Trace-ID": "my-trace-456"}
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Trace-ID"] == "my-trace-456"
+
+
+def test_get_document_completed_without_extracted_data(api_client, mocker):
+    """Test GET on completed job without include_extracted_data returns cached response."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    response = api_client.get(f"/v1/documents/{TEST_JOB_ID}")
+
+    assert response.status_code == 200
+    assert response.json()["jobStatus"] == "success"
+
+
+def test_search_documents_mixed_success_and_failure(api_client, mocker):
+    """Test search with one successful and one erroring job preserves both results."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.side_effect = [
+        JobStatus(
+            ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+            object_key="test.pdf",
+            process_status="success",
+            v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+        ),
+        Exception("DDB exploded"),
+    ]
+
+    response = api_client.post("/v1/documents/search", json={"jobIds": ["job-1", "job-2"]})
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert len(results) == 2
+    assert results[0]["jobStatus"] == "success"
+    assert results[1]["jobStatus"] == "error"
+
+
+def test_delete_document_s3_failure_still_marks_deleted(api_client, mocker):
+    """Test that S3 delete failure logs warning but still marks DDB record as deleted."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+    mocker.patch("documentai_api.services.s3.delete_object", side_effect=Exception("S3 down"))
+    mock_update_ddb = mocker.patch("documentai_api.utils.ddb.update_ddb")
+
+    response = api_client.delete(f"/v1/documents/{TEST_JOB_ID}")
+
+    assert response.status_code == 204
+    mock_update_ddb.assert_called_once()

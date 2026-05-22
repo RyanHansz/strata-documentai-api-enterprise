@@ -56,7 +56,7 @@ def create_batch(
         DocumentBatches.BATCH_STATUS: status.value,
         DocumentBatches.TOTAL_FILES: total_files,
         DocumentBatches.CREATED_AT: datetime.now(UTC).isoformat(),
-        # TTL 30 days from creation — batch records are short-lived tracking artifacts.
+        # TTL 30 days from creation - batch records are short-lived tracking artifacts.
         DocumentBatches.TIME_TO_LIVE: int(datetime.now(UTC).timestamp() + (30 * 24 * 60 * 60)),
     }
 
@@ -393,7 +393,7 @@ def get_user_provided_document_category(object_key: str) -> DocumentCategory | N
     The DDB record may hold values that don't map to a DocumentCategory enum
     member (e.g. the "Not specified" default when the API caller doesn't pick a
     category, or the legacy "unknown" fallback from insert_initial_ddb_record).
-    Returns None in those cases rather than raising — the caller treats None as
+    Returns None in those cases rather than raising - the caller treats None as
     "no category provided" and downstream paths handle it.
     """
     ddb_record = get_ddb_record(object_key)
@@ -645,7 +645,7 @@ def upsert_initial_ddb_record(
     """Run preclassification on the S3 object and upsert its DDB record.
 
     Creates the row if it doesn't exist; updates it in place if it does. Safe
-    to call after the API Lambda's insert_minimal_ddb_record — createdAt and
+    to call after the API Lambda's insert_minimal_ddb_record - createdAt and
     other minimal-record fields are preserved.
     """
     if not user_provided_document_category:

@@ -58,7 +58,7 @@ def generate(
         )
 
     typer.echo("")
-    typer.echo("API Key (save this — it will not be shown again):")
+    typer.echo("API Key (save this - it will not be shown again):")
     typer.echo(f"  {api_key}")
     typer.echo("")
     typer.echo(f"Client:      {client_name}")

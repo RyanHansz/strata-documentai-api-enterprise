@@ -35,7 +35,7 @@ S3_METADATA_KEY_ORIGINAL_FILE_NAME = UPLOAD_METADATA_KEYS["original_file_name"]
 S3_METADATA_KEY_BATCH_ID = UPLOAD_METADATA_KEYS["batch_id"]
 
 # === Batch upload ===
-# Max files per batch upload — set to match BDA concurrent job limit (~25) to
+# Max files per batch upload - set to match BDA concurrent job limit (~25) to
 # prevent throttling. Can be raised if the BDA quota is raised.
 # TODO: make configurable via environment variable for different deployments.
 MAX_BATCH_SIZE = 25

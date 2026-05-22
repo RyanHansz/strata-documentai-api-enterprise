@@ -66,7 +66,7 @@ def _lookup_key_in_ddb(key_hash: str) -> dict[str, Any] | None:
         return ddb_service.get_item(table_name, key)
     except Exception as e:
         # If DDB is unavailable, we return None which results in a 401.
-        # This is a safe default — failing open would be a security risk.
+        # This is a safe default - failing open would be a security risk.
         # Callers should monitor for elevated 401 rates as a signal of DDB issues.
         logger.error(f"Failed to look up API key in DynamoDB: {e}")
         return None
@@ -179,7 +179,7 @@ def _verify_with_insecure_shared_key(api_key: str) -> None:
 def get_active_keys_for_client(client_name: str) -> list[dict[str, Any]]:
     """Return all active DynamoDB records for a given client name.
 
-    Note: performs a table scan — acceptable for low-volume admin operations.
+    Note: performs a table scan - acceptable for low-volume admin operations.
     """
     from documentai_api.services import ddb as ddb_service
 

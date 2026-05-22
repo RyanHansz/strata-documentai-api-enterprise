@@ -1,9 +1,9 @@
 """Batch upload endpoints.
 
 Three routes:
-- POST /v1/documents/batch       — multi-file upload
-- POST /v1/documents/batch/zip   — ZIP archive upload
-- GET  /v1/batches/{batch_id}    — aggregate status with per-job list
+- POST /v1/documents/batch       - multi-file upload
+- POST /v1/documents/batch/zip   - ZIP archive upload
+- GET  /v1/batches/{batch_id}    - aggregate status with per-job list
 """
 
 import uuid

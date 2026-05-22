@@ -9,7 +9,7 @@ class EnvVars(StrEnum):
     """Canonical names of environment variables read by the application.
 
     Use with get_required_env(), os.getenv(), os.environ[...], or
-    monkeypatch.setenv() — since StrEnum members ARE str, no .value needed.
+    monkeypatch.setenv() - since StrEnum members ARE str, no .value needed.
     """
 
     # === AWS / BDA ===

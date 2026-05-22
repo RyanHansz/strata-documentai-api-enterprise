@@ -40,7 +40,8 @@ from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
     insert_minimal_ddb_record,
 )
-from documentai_api.utils.jobs import get_job_status, poll_for_completion
+from documentai_api.utils.jobs import JobStatus, get_job_status, poll_for_completion
+from documentai_api.utils.response_builder import build_v1_api_response
 from documentai_api.utils.tenant import validate_document_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
@@ -133,7 +134,7 @@ async def create_document(
         trace_id = str(uuid.uuid4())
 
     # Set trace ID early so it's included on the success path. Note: for HTTPException
-    # responses, FastAPI builds a fresh JSONResponse and this header is dropped — a
+    # responses, FastAPI builds a fresh JSONResponse and this header is dropped -  a
     # middleware or custom exception handler is responsible for echoing it on errors.
     response.headers["X-Trace-ID"] = trace_id
 
@@ -180,7 +181,7 @@ async def create_document(
         return JobStatusResponse(
             job_id=job_id,
             job_status=ProcessStatus.AI_CONSENT_DECLINED.value,
-            message="Document not processed — AI consent not provided",
+            message="Document not processed - AI consent not provided",
         )
 
     try:
@@ -219,49 +220,58 @@ async def create_document(
     tags=[ApiVisualizationTag.DOCUMENTS_QUERY],
 )
 async def get_document_results(
-    job_id: str,
+    job_id: uuid.UUID,
+    response: Response,
     auth: Annotated[UserContext, Depends(get_user_context)],
     include_extracted_data: bool = False,
+    trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
 ) -> JobStatusResponse:
     """Get processing results by job ID."""
+    if not trace_id:
+        trace_id = str(uuid.uuid4())
+    response.headers["X-Trace-ID"] = trace_id
+
     try:
-        job_status = get_job_status(job_id)
+        job_status = await asyncio.to_thread(get_job_status, str(job_id))
 
-        validate_document_tenant_access(job_status.ddb_record, auth.tenant_id, job_id)
+        validate_document_tenant_access(job_status.ddb_record, auth.tenant_id, str(job_id))
 
+        # SECURITY: This must return the same 404 as validate_document_tenant_access
+        # to prevent job_id enumeration across tenants.
         if job_status.process_status == ProcessStatus.DELETED.value:
             raise HTTPException(status_code=404, detail=f"Job ID {job_id} not found")
 
         if not job_status.v1_response_json:
             return JobStatusResponse(
-                job_id=job_id,
-                job_status=job_status.process_status or "processing",
+                job_id=str(job_id),
+                job_status=job_status.process_status or ProcessStatus.NOT_STARTED.value,
                 message="Processing in progress",
             )
 
+        # TODO: Terminal states are immutable - add Cache-Control + ETag headers
+        # to reduce DDB reads from repeated client polls after completion.
         # processing complete
         if include_extracted_data:
-            from documentai_api.utils.response_builder import build_v1_api_response
-
             if not job_status.object_key or not job_status.process_status:
                 raise HTTPException(status_code=500, detail=f"Incomplete record for job {job_id}")
 
-            return JobStatusResponse(
-                **build_v1_api_response(
-                    object_key=job_status.object_key,
-                    job_status=job_status.process_status,
-                    include_extracted_data=True,
-                )
+            result = await asyncio.to_thread(
+                build_v1_api_response,
+                object_key=job_status.object_key,
+                job_status=job_status.process_status,
+                include_extracted_data=True,
             )
+            return JobStatusResponse(**result)
         else:
             return JobStatusResponse(**json.loads(job_status.v1_response_json))
 
     except HTTPException:
         raise
-    except Exception as e:
-        msg = f"Error retrieving results for job {job_id}: {e}"
-        logger.error(msg)
-        raise HTTPException(status_code=500, detail="Failed to retrieve results") from e
+    except Exception:
+        logger.exception(
+            "get_document_results failed", extra={"job_id": str(job_id), "trace_id": trace_id}
+        )
+        raise HTTPException(status_code=500, detail="Failed to retrieve results") from None
 
 
 @router.delete(
@@ -270,15 +280,15 @@ async def get_document_results(
     tags=[ApiVisualizationTag.DOCUMENTS_DELETE],
 )
 async def delete_document(
-    job_id: str, auth: Annotated[UserContext, Depends(get_user_context)]
+    job_id: uuid.UUID, auth: Annotated[UserContext, Depends(get_user_context)]
 ) -> Response:
     """Delete a document by job ID. Removes S3 file and marks DDB record as deleted."""
     from documentai_api.services import s3 as s3_service
     from documentai_api.utils.s3 import parse_s3_uri
 
-    job_status = get_job_status(job_id)
+    job_status = await asyncio.to_thread(get_job_status, str(job_id))
 
-    validate_document_tenant_access(job_status.ddb_record, auth.tenant_id, job_id)
+    validate_document_tenant_access(job_status.ddb_record, auth.tenant_id, str(job_id))
 
     current_status = job_status.process_status
     if current_status == ProcessStatus.DELETED.value:
@@ -296,7 +306,7 @@ async def delete_document(
             if input_location:
                 bucket, prefix = parse_s3_uri(input_location)
                 s3_key = f"{prefix}/{job_status.object_key}" if prefix else job_status.object_key
-                s3_service.delete_object(bucket, s3_key)
+                await asyncio.to_thread(s3_service.delete_object, bucket, s3_key)
         except Exception as e:
             logger.warning(f"Failed to delete S3 object for job {job_id}: {e}")
 
@@ -306,7 +316,9 @@ async def delete_document(
     if not job_status.object_key:
         raise HTTPException(status_code=500, detail=f"Incomplete record for job {job_id}")
 
-    update_ddb(object_key=job_status.object_key, status=ProcessStatus.DELETED)
+    await asyncio.to_thread(
+        update_ddb, object_key=job_status.object_key, status=ProcessStatus.DELETED
+    )
 
     return Response(status_code=204)
 
@@ -329,9 +341,16 @@ async def search_documents(
         )
 
     results: list[JobStatusResponse] = []
-    for job_id in body.job_ids:
+    job_statuses = await asyncio.gather(
+        *[asyncio.to_thread(get_job_status, job_id) for job_id in body.job_ids],
+        return_exceptions=True,
+    )
+
+    for job_id, job_status in zip(body.job_ids, job_statuses, strict=True):
         try:
-            job_status = get_job_status(job_id)
+            if isinstance(job_status, BaseException):
+                raise job_status
+            assert isinstance(job_status, JobStatus)
 
             if (
                 not job_status.ddb_record
@@ -348,13 +367,11 @@ async def search_documents(
                 results.append(
                     JobStatusResponse(
                         job_id=job_id,
-                        job_status=job_status.process_status or "processing",
+                        job_status=job_status.process_status or ProcessStatus.NOT_STARTED.value,
                         message="Processing in progress",
                     )
                 )
             elif body.include_extracted_data:
-                from documentai_api.utils.response_builder import build_v1_api_response
-
                 if not job_status.object_key or not job_status.process_status:
                     results.append(
                         JobStatusResponse(
@@ -364,19 +381,17 @@ async def search_documents(
                         )
                     )
                 else:
-                    results.append(
-                        JobStatusResponse(
-                            **build_v1_api_response(
-                                object_key=job_status.object_key,
-                                job_status=job_status.process_status,
-                                include_extracted_data=True,
-                            )
-                        )
+                    result = await asyncio.to_thread(
+                        build_v1_api_response,
+                        object_key=job_status.object_key,
+                        job_status=job_status.process_status,
+                        include_extracted_data=True,
                     )
+                    results.append(JobStatusResponse(**result))
             else:
                 results.append(JobStatusResponse(**json.loads(job_status.v1_response_json)))
-        except Exception as e:
-            logger.error(f"Error retrieving job {job_id} in search: {e}")
+        except Exception:
+            logger.exception("Error retrieving job in search", extra={"job_id": job_id})
             results.append(
                 JobStatusResponse(
                     job_id=job_id,

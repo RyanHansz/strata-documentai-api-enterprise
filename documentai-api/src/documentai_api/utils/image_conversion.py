@@ -32,7 +32,7 @@ def convert_to_png(file_bytes: bytes, content_type: str) -> bytes:
 
         img = Image.open(io.BytesIO(file_bytes))
 
-        # animated GIF — take first frame
+        # animated GIF - take first frame
         if content_type == "image/gif" and getattr(img, "is_animated", False):
             img.seek(0)
 
