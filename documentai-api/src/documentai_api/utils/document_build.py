@@ -43,6 +43,13 @@ def document_build_exists(build_id: str) -> bool:
     )
 
 
+def get_build_metadata(build_id: str) -> dict[str, Any] | None:
+    """Return the metadata record for a build (page 0)."""
+    return ddb_service.get_item(
+        get_document_build_table(), _page_key(build_id, _METADATA_PAGE_NUMBER)
+    )
+
+
 def document_build_page_exists(build_id: str, page_number: int) -> bool:
     """Check if a page exists for a multipage session."""
     item = ddb_service.get_item(get_document_build_table(), _page_key(build_id, page_number))
@@ -145,6 +152,8 @@ def create_document_build(
     external_document_id: str | None = None,
     external_system_id: str | None = None,
     ai_consent_flag: bool | None = None,
+    tenant_id: str | None = None,
+    client_name: str | None = None,
 ) -> str:
     """Create a new document build."""
     item: dict[str, Any] = {
@@ -162,6 +171,10 @@ def create_document_build(
         item[DocumentBuilds.EXTERNAL_SYSTEM_ID] = external_system_id
     if ai_consent_flag is not None:
         item[DocumentBuilds.AI_CONSENT_FLAG] = ai_consent_flag
+    if tenant_id is not None:
+        item[DocumentBuilds.TENANT_ID] = tenant_id
+    if client_name is not None:
+        item[DocumentBuilds.CLIENT_NAME] = client_name
 
     ddb_service.put_item(get_document_build_table(), item)
     return build_id

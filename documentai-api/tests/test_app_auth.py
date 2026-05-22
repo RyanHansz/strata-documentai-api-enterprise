@@ -36,23 +36,25 @@ def test_verify_api_key_missing_header(api_client, api_skeleton_key):
 
 
 def test_all_non_public_routes_require_auth():
-    """Every non-public route must declare Depends(verify_api_key).
+    """Every non-public route must declare Depends(verify_api_key) or Depends(get_user_context).
 
     Locks in the auth posture at the structural level: if someone adds a new
     endpoint and forgets the dependency, this test fails immediately.
     """
     from fastapi.routing import APIRoute
 
-    from documentai_api.app import app, verify_api_key
+    from documentai_api.app import app
+    from documentai_api.utils.auth import get_user_context, verify_api_key
 
     public = {"/", "/health", "/openapi.json", "/docs", "/redoc"}
+    auth_deps = {verify_api_key, get_user_context}
 
     for route in app.routes:
         if not isinstance(route, APIRoute) or route.path in public:
             continue
-        deps = [d.call for d in route.dependant.dependencies]
-        assert verify_api_key in deps, (
-            f"Route {sorted(route.methods)} {route.path} is missing Depends(verify_api_key)"
+        deps = {d.call for d in route.dependant.dependencies}
+        assert not deps.isdisjoint(auth_deps), (
+            f"Route {sorted(route.methods)} {route.path} is missing auth dependency"
         )
 
 

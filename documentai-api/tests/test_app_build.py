@@ -324,7 +324,6 @@ def test_get_document_build_success(document_build_ddb_table):
     ]
 
     with (
-        patch("documentai_api.app_build.document_build_exists", return_value=True),
         patch("documentai_api.app_build.get_document_build_pages", return_value=pages),
         patch("documentai_api.app_build.is_document_build_submitted", return_value=False),
     ):
@@ -407,7 +406,6 @@ def test_get_document_build_includes_status_and_filename(document_build_ddb_tabl
     ]
 
     with (
-        patch("documentai_api.app_build.document_build_exists", return_value=True),
         patch("documentai_api.app_build.get_document_build_pages", return_value=pages),
         patch("documentai_api.app_build.is_document_build_submitted", return_value=False),
     ):
@@ -432,7 +430,6 @@ def test_get_document_build_status(document_build_ddb_table, is_submitted, expec
     pages = [create_page_metadata(1, category="income")]
 
     with (
-        patch("documentai_api.app_build.document_build_exists", return_value=True),
         patch("documentai_api.app_build.get_document_build_pages", return_value=pages),
         patch("documentai_api.app_build.is_document_build_submitted", return_value=is_submitted),
     ):

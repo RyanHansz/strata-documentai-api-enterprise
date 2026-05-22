@@ -6,6 +6,7 @@ class ApiKeyRecord:
 
     KEY_HASH = "keyHash"
     CLIENT_NAME = "clientName"
+    TENANT_ID = "tenantId"
     ENVIRONMENT = "environment"
     IS_ACTIVE = "isActive"
     CREATED_AT = "createdAt"

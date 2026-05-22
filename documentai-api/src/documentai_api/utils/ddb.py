@@ -45,6 +45,8 @@ def create_batch(
     total_files: int,
     category: DocumentCategory | None,
     status: BatchStatus = BatchStatus.UPLOADING,
+    tenant_id: str | None = None,
+    client_name: str | None = None,
 ) -> None:
     """Create batch record in DynamoDB."""
     table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME)
@@ -62,6 +64,10 @@ def create_batch(
         item[DocumentBatches.CATEGORY] = (
             category.value if isinstance(category, DocumentCategory) else category
         )
+    if tenant_id is not None:
+        item[DocumentBatches.TENANT_ID] = tenant_id
+    if client_name is not None:
+        item[DocumentBatches.CLIENT_NAME] = client_name
 
     ddb_service.put_item(table_name, item)
 
@@ -498,6 +504,8 @@ def upsert_ddb(
     external_system_id: str | None = None,
     ai_consent_flag: bool | None = None,
     upload_method: str | None = None,
+    tenant_id: str | None = None,
+    client_name: str | None = None,
 ) -> None:
     """Upsert a document-metadata DDB row by file name.
 
@@ -569,6 +577,12 @@ def upsert_ddb(
         if upload_method is not None:
             expr_fields.append(f"{DocumentMetadata.UPLOAD_METHOD} = :uploadMethod")
             expr_values[":uploadMethod"] = upload_method
+        if tenant_id is not None:
+            expr_fields.append(f"{DocumentMetadata.TENANT_ID} = :tenantId")
+            expr_values[":tenantId"] = tenant_id
+        if client_name is not None:
+            expr_fields.append(f"{DocumentMetadata.CLIENT_NAME} = :clientName")
+            expr_values[":clientName"] = client_name
 
         update_expr = "SET " + ", ".join(expr_fields)
         _execute_ddb_update(object_key, update_expr, expr_values)
@@ -582,6 +596,8 @@ def insert_minimal_ddb_record(
     original_file_name: str,
     job_id: str,
     upload_method: str,
+    tenant_id: str,
+    client_name: str,
     process_status: ProcessStatus = ProcessStatus.NOT_STARTED,
     user_provided_document_category: str | None = None,
     trace_id: str | None = None,
@@ -611,6 +627,8 @@ def insert_minimal_ddb_record(
         external_system_id=external_system_id,
         ai_consent_flag=ai_consent_flag,
         upload_method=upload_method,
+        tenant_id=tenant_id,
+        client_name=client_name,
     )
 
 

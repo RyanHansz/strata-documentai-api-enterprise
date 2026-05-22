@@ -149,19 +149,22 @@ def build_v1_api_response(
             document_type = ddb_record.get(DocumentMetadata.BDA_MATCHED_DOCUMENT_CLASS)
 
             if tenant_id and document_type and fields:
-                from documentai_api.utils.extraction_rules import apply_extraction_rules
+                try:
+                    from documentai_api.utils.extraction_rules import apply_extraction_rules
 
-                rule_result = apply_extraction_rules(tenant_id, document_type, fields)
-                fields = rule_result.fields
+                    rule_result = apply_extraction_rules(tenant_id, document_type, fields)
+                    fields = rule_result.fields
 
-                if rule_result.missing_required_field_list:
-                    base_response["missingRequiredFieldList"] = (
-                        rule_result.missing_required_field_list
-                    )
-                    base_response["responseCode"] = ResponseCodes.MISSING_FIELDS
-                    base_response["responseMessage"] = ResponseCodes.get_message(
-                        ResponseCodes.MISSING_FIELDS
-                    )
+                    if rule_result.missing_required_field_list:
+                        base_response["missingRequiredFieldList"] = (
+                            rule_result.missing_required_field_list
+                        )
+                        base_response["responseCode"] = ResponseCodes.MISSING_FIELDS
+                        base_response["responseMessage"] = ResponseCodes.get_message(
+                            ResponseCodes.MISSING_FIELDS
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to apply extraction rules for {document_type}: {e}")
 
             base_response["fields"] = fields
 

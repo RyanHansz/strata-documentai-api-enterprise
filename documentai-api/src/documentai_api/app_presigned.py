@@ -15,7 +15,7 @@ from documentai_api.config.constants import (
 from documentai_api.config.env import get_aws_config
 from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import PresignedUploadResponse
-from documentai_api.utils.auth import verify_api_key
+from documentai_api.utils.auth import UserContext, get_user_context
 from documentai_api.utils.ddb import insert_minimal_ddb_record
 from documentai_api.utils.uploads import generate_unique_filename
 
@@ -28,7 +28,6 @@ PRESIGNED_URL_EXPIRY_SECONDS = 900  # 15 minutes
 
 @router.post(
     "/v1/documents/presigned-url",
-    dependencies=[Depends(verify_api_key)],
     name="createPresignedUrl",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
@@ -36,6 +35,7 @@ async def create_presigned_upload_url(
     response: Response,
     filename: Annotated[str, Form(description="Original filename")],
     content_type: Annotated[str, Form(description="MIME type of the file")],
+    auth: Annotated[UserContext, Depends(get_user_context)],
     category: Annotated[
         DocumentCategory | None, Form(description="Type of document being uploaded")
     ] = None,
@@ -89,6 +89,8 @@ async def create_presigned_upload_url(
         external_system_id=external_system_id,
         ai_consent_flag=ai_consent_flag,
         upload_method=UploadMethod.PRESIGNED,
+        tenant_id=auth.tenant_id,
+        client_name=auth.client_name,
     )
 
     metadata = {

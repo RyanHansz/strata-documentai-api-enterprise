@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
+from pydantic import BaseModel
 
 from documentai_api.config.constants import API_AUTH_KEY_HEADER_NAME
 from documentai_api.config.env import get_app_env_config, get_aws_config
@@ -19,6 +20,14 @@ from documentai_api.utils.cache import get_cache
 logger = get_logger(__name__)
 
 api_key_header = APIKeyHeader(name=API_AUTH_KEY_HEADER_NAME, auto_error=False)
+
+
+class UserContext(BaseModel):
+    """Authenticated user context."""
+
+    tenant_id: str
+    client_name: str
+
 
 # tracks when lastUsed was last written per key hash: {key_hash: monotonic_time}
 _last_used_written_at: dict[str, float] = {}
@@ -287,3 +296,58 @@ def verify_api_key(api_key: str = Depends(api_key_header)) -> None:
         _verify_with_ddb(api_key)
     else:
         _verify_with_insecure_shared_key(api_key)
+
+
+def get_user_context(api_key: str = Depends(api_key_header)) -> UserContext:
+    """Authenticate the request and return user context.
+
+    When API_AUTH_ENABLED is true, validates against DynamoDB api-keys table
+    and returns tenant/client info. Falls back to local dev context.
+
+    Returns:
+        UserContext with tenant_id and client_name.
+    """
+    auth_enabled = get_app_env_config().api_auth_enabled
+
+    if auth_enabled:
+        return _get_user_context_from_ddb(api_key)
+
+    _verify_with_insecure_shared_key(api_key)
+    return UserContext(tenant_id="local", client_name="local-dev")
+
+
+def _get_user_context_from_ddb(api_key: str) -> UserContext:
+    """Validate API key and return UserContext from DDB record."""
+    if not _is_valid_key_format(api_key):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+    key_hash = _hash_key(api_key)
+
+    cache = get_cache()
+    record = cache.get(key_hash)
+    if record is None:
+        record = _lookup_key_in_ddb(key_hash)
+        if record:
+            cache.add(key_hash, record, ttl_minutes=_get_cache_ttl_minutes())
+
+    if not record:
+        logger.warning("API key not found in DynamoDB")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+    if not _validate_key_record(record):
+        logger.warning(
+            f"API key validation failed for client: {record.get(ApiKeyRecord.CLIENT_NAME, 'unknown')}"
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+    tenant_id = record.get(ApiKeyRecord.TENANT_ID)
+    if not tenant_id:
+        logger.error(f"API key missing tenantId for client: {record.get(ApiKeyRecord.CLIENT_NAME)}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+    threading.Thread(target=_update_last_used, args=(key_hash,), daemon=True).start()
+
+    return UserContext(
+        tenant_id=tenant_id,
+        client_name=record.get(ApiKeyRecord.CLIENT_NAME, "unknown"),
+    )

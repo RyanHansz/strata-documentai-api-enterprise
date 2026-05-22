@@ -25,12 +25,11 @@ from documentai_api.models.api_responses import (
     BuildSubmitAsyncResponse,
     JobStatusResponse,
 )
-from documentai_api.utils.auth import verify_api_key
+from documentai_api.utils.auth import UserContext, get_user_context
 from documentai_api.utils.document_build import (
     create_document_build,
     delete_document_build,
     delete_document_build_page,
-    document_build_exists,
     document_build_page_exists,
     get_document_build_pages,
     is_document_build_submitted,
@@ -39,6 +38,7 @@ from documentai_api.utils.document_build import (
 )
 from documentai_api.utils.pdf import merge_pages_to_pdf
 from documentai_api.utils.s3 import parse_s3_uri
+from documentai_api.utils.tenant import validate_build_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
     upload_document_for_processing,
@@ -47,7 +47,7 @@ from documentai_api.utils.uploads import (
 
 logger = get_logger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_user_context)])
 
 
 async def add_page_to_build(
@@ -101,11 +101,11 @@ async def add_page_to_build(
 @router.post(
     "/v1/builds",
     name="postDocumentBuild",
-    dependencies=[Depends(verify_api_key)],
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
 )
 async def create_build(
     response: Response,
+    auth: Annotated[UserContext, Depends(get_user_context)],
     category: Annotated[
         DocumentCategory | None, Form(description="Type of document being uploaded")
     ] = None,
@@ -129,6 +129,8 @@ async def create_build(
         external_document_id=external_document_id,
         external_system_id=external_system_id,
         ai_consent_flag=ai_consent_flag,
+        tenant_id=auth.tenant_id,
+        client_name=auth.client_name,
     )
 
     response.headers["X-Trace-ID"] = trace_id
@@ -141,7 +143,7 @@ async def create_build(
 @router.post(
     "/v1/builds/{build_id}/pages",
     name="postDocumentBuildPage",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_PAGES],
 )
 async def upload_document_build_page(
@@ -192,7 +194,7 @@ async def upload_document_build_page(
 @router.post(
     "/v1/builds/{build_id}/pages/batch",
     name="postDocumentBuildPageBatch",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_PAGES],
 )
 async def upload_document_build_pages_batch(
@@ -244,7 +246,7 @@ async def upload_document_build_pages_batch(
 @router.post(
     "/v1/builds/{build_id}/submit",
     name="postDocumentBuildSubmit",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_build_tenant_access)],
     response_model=BuildSubmitAsyncResponse | JobStatusResponse,
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
 )
@@ -323,15 +325,14 @@ async def submit_document_build(
 @router.get(
     "/v1/builds/{build_id}",
     name="getDocumentBuildStatus",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_STATUS],
 )
-async def get_document_build(build_id: str) -> BuildDetailsResponse:
+async def get_document_build(
+    build_id: str,
+) -> BuildDetailsResponse:
     """Get document build details including all uploaded pages."""
     try:
-        if not document_build_exists(build_id):
-            raise HTTPException(status_code=404, detail=f"Build {build_id} not found")
-
         pages = get_document_build_pages(build_id)
         build_status = (
             DocumentBuildStatus.SUBMITTED
@@ -363,7 +364,7 @@ async def get_document_build(build_id: str) -> BuildDetailsResponse:
 @router.delete(
     "/v1/builds/{build_id}/pages/{page_number}",
     name="deleteDocumentBuildPage",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_PAGES],
 )
 async def delete_document_build_page_endpoint(build_id: str, page_number: int) -> Response:
@@ -390,10 +391,12 @@ async def delete_document_build_page_endpoint(build_id: str, page_number: int) -
 @router.delete(
     "/v1/builds/{build_id}",
     name="deleteDocumentBuild",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
 )
-async def delete_document_build_endpoint(build_id: str) -> Response:
+async def delete_document_build_endpoint(
+    build_id: str,
+) -> Response:
     """Delete an entire document build and all its pages."""
     try:
         deleted = delete_document_build(build_id)

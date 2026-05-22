@@ -13,3 +13,5 @@ class DocumentBuilds:
     EXTERNAL_SYSTEM_ID = "externalSystemId"
     AI_CONSENT_FLAG = "aiConsentFlag"
     IS_BUILD_METADATA = "isBuildMetadata"
+    TENANT_ID = "tenantId"
+    CLIENT_NAME = "clientName"

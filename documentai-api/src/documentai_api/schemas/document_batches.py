@@ -12,3 +12,5 @@ class DocumentBatches:
     UPDATED_AT = "updatedAt"
     ERROR_MESSAGE = "errorMessage"
     TIME_TO_LIVE = "ttl"
+    TENANT_ID = "tenantId"
+    CLIENT_NAME = "clientName"

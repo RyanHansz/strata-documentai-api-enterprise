@@ -31,7 +31,7 @@ from documentai_api.config.env import get_aws_config
 from documentai_api.logging import get_logger
 from documentai_api.schemas.document_batches import DocumentBatches
 from documentai_api.schemas.document_metadata import DocumentMetadata
-from documentai_api.utils.auth import verify_api_key
+from documentai_api.utils.auth import UserContext, get_user_context
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
     classify_as_conversion_failed,
@@ -43,6 +43,7 @@ from documentai_api.utils.ddb import (
     update_batch_status,
 )
 from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.tenant import validate_batch_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
     generate_unique_filename,
@@ -53,7 +54,7 @@ from documentai_api.utils.zip import extract_files_from_zip
 
 logger = get_logger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_user_context)])
 
 
 def validate_batch_id(batch_id: str) -> None:
@@ -67,6 +68,8 @@ async def _process_batch_files(
     batch_id: str,
     category: DocumentCategory | None,
     trace_id: str,
+    tenant_id: str,
+    client_name: str,
     external_document_id: str | None = None,
     external_system_id: str | None = None,
     ai_consent_flag: bool | None = None,
@@ -107,6 +110,8 @@ async def _process_batch_files(
             external_system_id=external_system_id,
             ai_consent_flag=ai_consent_flag,
             upload_method=upload_method,
+            tenant_id=tenant_id,
+            client_name=client_name,
         )
 
         if ai_consent_flag is False:
@@ -144,13 +149,13 @@ async def _process_batch_files(
 
 @router.post(
     "/v1/documents/batch",
-    dependencies=[Depends(verify_api_key)],
     name="batchUpload",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
 async def upload_document_batch(
     response: Response,
     files: Annotated[list[UploadFile], Form(description="Documents to process")],
+    auth: Annotated[UserContext, Depends(get_user_context)],
     batch_id: Annotated[str | None, Form()] = None,
     category: Annotated[DocumentCategory | None, Form()] = None,
     trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
@@ -178,12 +183,21 @@ async def upload_document_batch(
     validate_batch_id(batch_id)
 
     try:
-        create_batch(batch_id, len(files), category, status=BatchStatus.UPLOADING)
+        create_batch(
+            batch_id,
+            len(files),
+            category,
+            status=BatchStatus.UPLOADING,
+            tenant_id=auth.tenant_id,
+            client_name=auth.client_name,
+        )
         jobs = await _process_batch_files(
             files=files,
             batch_id=batch_id,
             category=category,
             trace_id=trace_id,
+            tenant_id=auth.tenant_id,
+            client_name=auth.client_name,
             external_document_id=external_document_id,
             external_system_id=external_system_id,
             ai_consent_flag=ai_consent_flag,
@@ -210,13 +224,13 @@ async def upload_document_batch(
 
 @router.post(
     "/v1/documents/batch/zip",
-    dependencies=[Depends(verify_api_key)],
     name="batchUploadZip",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
 async def upload_zip_batch(
     response: Response,
     zip_file: Annotated[UploadFile, Form(description="ZIP file containing documents")],
+    auth: Annotated[UserContext, Depends(get_user_context)],
     batch_id: Annotated[str | None, Form()] = None,
     category: Annotated[DocumentCategory | None, Form()] = None,
     trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
@@ -246,12 +260,21 @@ async def upload_zip_batch(
                 detail=f"Batch size exceeds maximum of {MAX_BATCH_SIZE} files",
             )
 
-        create_batch(batch_id, len(files), category, status=BatchStatus.UPLOADING)
+        create_batch(
+            batch_id,
+            len(files),
+            category,
+            status=BatchStatus.UPLOADING,
+            tenant_id=auth.tenant_id,
+            client_name=auth.client_name,
+        )
         jobs = await _process_batch_files(
             files=files,
             batch_id=batch_id,
             category=category,
             trace_id=trace_id,
+            tenant_id=auth.tenant_id,
+            client_name=auth.client_name,
             external_document_id=external_document_id,
             external_system_id=external_system_id,
             ai_consent_flag=ai_consent_flag,
@@ -278,7 +301,7 @@ async def upload_zip_batch(
 
 @router.get(
     "/v1/batches/{batch_id}",
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(validate_batch_tenant_access)],
     name="batchUploadStatus",
     tags=[ApiVisualizationTag.DOCUMENTS_QUERY],
 )
