@@ -9,7 +9,7 @@ from documentai_api.config.constants import (
 from documentai_api.config.env import get_aws_config
 from documentai_api.logging import get_logger
 from documentai_api.services.bedrock import invoke_model
-from documentai_api.utils.models import BedrockClassificationResult
+from documentai_api.utils.dto import BedrockClassificationResult
 from documentai_api.utils.ssm import get_parameter_value
 
 logger = get_logger(__name__)

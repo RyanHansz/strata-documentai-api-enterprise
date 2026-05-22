@@ -96,17 +96,17 @@ def test_create_document_with_external_fields(api_client, blank_pdf_bytes, mocke
 
     files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
     data = {
-        "external_document_id": "ext-doc-123",
-        "external_system_id": "ext-sys-456",
+        "external_document_id": "test-ext-doc-id",
+        "external_system_id": "test-ext-sys-id",
         "ai_consent_flag": "true",
     }
     response = api_client.post("/v1/documents", files=files, data=data)
 
     assert response.status_code == 200
-    call_kwargs = mock_insert.call_args.kwargs
-    assert call_kwargs["external_document_id"] == "ext-doc-123"
-    assert call_kwargs["external_system_id"] == "ext-sys-456"
-    assert call_kwargs["ai_consent_flag"] is True
+    record = mock_insert.call_args[0][0]
+    assert record.external_document_id == "test-ext-doc-id"
+    assert record.external_system_id == "test-ext-sys-id"
+    assert record.ai_consent_flag is True
 
 
 def test_create_document_ai_consent_declined(api_client, blank_pdf_bytes, mocker):
@@ -180,10 +180,12 @@ def test_create_document_trace_id_echoed_on_success(api_client, blank_pdf_bytes)
 def test_create_document_custom_trace_id(api_client, blank_pdf_bytes):
     """Test custom X-Trace-ID is echoed back."""
     files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
-    response = api_client.post("/v1/documents", files=files, headers={"X-Trace-ID": "my-trace-123"})
+    response = api_client.post(
+        "/v1/documents", files=files, headers={"X-Trace-ID": "test-trace-id"}
+    )
 
     assert response.status_code == 200
-    assert response.headers["X-Trace-ID"] == "my-trace-123"
+    assert response.headers["X-Trace-ID"] == "test-trace-id"
 
 
 def test_create_document_upload_failure_classifies_record(api_client, blank_pdf_bytes, mocker):

@@ -14,6 +14,7 @@ from documentai_api.config.constants import (
 )
 from documentai_api.config.env import EnvVars, get_aws_config, get_required_env
 from documentai_api.logging import get_logger
+from documentai_api.models.document_record import DocumentRecord
 from documentai_api.schemas.document_batches import DocumentBatches
 from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.services import ddb as ddb_service
@@ -21,7 +22,7 @@ from documentai_api.services import s3 as s3_service
 from documentai_api.services import sqs as sqs_service
 from documentai_api.utils import s3 as s3_utils
 from documentai_api.utils.bedrock import preclassify_document_image
-from documentai_api.utils.models import (
+from documentai_api.utils.dto import (
     ClassificationData,
     FieldMetrics,
     InternalApiResponse,
@@ -625,44 +626,28 @@ def upsert_ddb(
         raise
 
 
-def insert_minimal_ddb_record(
-    ddb_key: str,
-    original_file_name: str,
-    job_id: str,
-    upload_method: str,
-    tenant_id: str,
-    client_name: str,
-    process_status: ProcessStatus = ProcessStatus.NOT_STARTED,
-    user_provided_document_category: str | None = None,
-    trace_id: str | None = None,
-    batch_id: str | None = None,
-    content_type: str | None = None,
-    file_size_bytes: int | None = None,
-    external_document_id: str | None = None,
-    external_system_id: str | None = None,
-    ai_consent_flag: bool | None = None,
-) -> None:
+def insert_minimal_ddb_record(record: DocumentRecord) -> None:
     """Create initial tracking record from the API upload path.
 
     Uses upsert_ddb so doc-processor's later upsert_initial_ddb_record can update
     in place (preserving createdAt, job_id, trace_id) rather than overwriting.
     """
     upsert_ddb(
-        object_key=ddb_key,
-        original_file_name=original_file_name,
-        user_provided_document_category=user_provided_document_category,
-        process_status=process_status,
-        file_size_bytes=file_size_bytes,
-        content_type=content_type,
-        job_id=job_id,
-        trace_id=trace_id,
-        batch_id=batch_id,
-        external_document_id=external_document_id,
-        external_system_id=external_system_id,
-        ai_consent_flag=ai_consent_flag,
-        upload_method=upload_method,
-        tenant_id=tenant_id,
-        client_name=client_name,
+        object_key=record.ddb_key,
+        original_file_name=record.original_file_name,
+        user_provided_document_category=record.category,
+        process_status=record.process_status,
+        file_size_bytes=record.file_size_bytes,
+        content_type=record.content_type,
+        job_id=record.job_id,
+        trace_id=record.trace_id,
+        batch_id=record.batch_id,
+        external_document_id=record.external_document_id,
+        external_system_id=record.external_system_id,
+        ai_consent_flag=record.ai_consent_flag,
+        upload_method=record.upload_method,
+        tenant_id=record.tenant_id,
+        client_name=record.client_name,
     )
 
 

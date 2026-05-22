@@ -10,7 +10,7 @@ from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import JobStatusResponse
 from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils.ddb import classify_as_failed, get_ddb_by_job_id
-from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.dto import ClassificationData
 
 logger = get_logger(__name__)
 

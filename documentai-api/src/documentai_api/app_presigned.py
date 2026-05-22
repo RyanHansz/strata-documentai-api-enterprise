@@ -23,6 +23,7 @@ from documentai_api.config.constants import (
 from documentai_api.config.env import get_app_env_config, get_aws_config
 from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import PresignedUploadResponse
+from documentai_api.models.document_record import DocumentRecord
 from documentai_api.services import s3 as s3_service
 from documentai_api.utils.auth import get_user_context
 from documentai_api.utils.ddb import insert_minimal_ddb_record
@@ -127,13 +128,12 @@ async def create_presigned_upload_url(
         raise HTTPException(status_code=500, detail="Failed to generate upload URL") from None
 
     try:
-        await asyncio.to_thread(
-            insert_minimal_ddb_record,
+        record = DocumentRecord(
             ddb_key=ddb_key,
             original_file_name=filename,
             job_id=job_id,
             process_status=ProcessStatus.PENDING_UPLOAD,
-            user_provided_document_category=category,
+            category=category,
             trace_id=trace_id,
             content_type=content_type,
             external_document_id=external_document_id,
@@ -142,6 +142,7 @@ async def create_presigned_upload_url(
             tenant_id=auth.tenant_id,
             client_name=auth.client_name,
         )
+        await asyncio.to_thread(insert_minimal_ddb_record, record)
     except Exception:
         logger.exception("Failed to create tracking record")
         raise HTTPException(status_code=500, detail="Failed to create upload record") from None

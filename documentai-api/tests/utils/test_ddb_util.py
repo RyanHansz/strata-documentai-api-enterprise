@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from documentai_api.config.constants import ProcessStatus
 from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils import ddb as ddb_util
-from documentai_api.utils.models import (
+from documentai_api.utils.dto import (
     BedrockClassificationResult,
     ClassificationData,
     InternalApiResponse,

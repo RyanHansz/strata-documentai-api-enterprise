@@ -38,6 +38,7 @@ from documentai_api.models.api_responses import (
     JobStatusResponse,
     UploadAsyncResponse,
 )
+from documentai_api.models.document_record import DocumentRecord
 from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils.auth import get_user_context
 from documentai_api.utils.ddb import (
@@ -124,12 +125,11 @@ async def create_document(
     dest_path = f"{input_location}/{unique_file_name}"
 
     try:
-        await asyncio.to_thread(
-            insert_minimal_ddb_record,
+        record = DocumentRecord(
             ddb_key=ddb_key,
             original_file_name=filename,
             job_id=job_id,
-            user_provided_document_category=category,
+            category=category,
             trace_id=trace_id,
             content_type=actual_content_type,
             external_document_id=external_document_id,
@@ -139,6 +139,7 @@ async def create_document(
             tenant_id=auth.tenant_id,
             client_name=auth.client_name,
         )
+        await asyncio.to_thread(insert_minimal_ddb_record, record)
     except Exception:
         logger.exception("Failed to create tracking record")
         raise HTTPException(status_code=500, detail="Failed to create upload record") from None

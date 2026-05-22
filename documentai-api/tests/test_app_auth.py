@@ -60,7 +60,7 @@ def test_all_non_public_routes_require_auth():
 
 def test_verify_api_key_valid(api_client, api_skeleton_key, mocker):
     """Test allows request with valid API key."""
-    mocker.patch("documentai_api.app.get_all_schemas", return_value={"test": {}})
+    mocker.patch("documentai_api.app_dictionary.get_all_schemas", return_value={"test": {}})
 
     response = api_client.get("/v1/dictionary/schemas", headers={"API-Key": api_skeleton_key})
     assert response.status_code == 200
@@ -74,7 +74,7 @@ def test_verify_api_key_valid(api_client, api_skeleton_key, mocker):
 def test_ddb_auth_valid_key(api_client, monkeypatch, mocker):
     """Test allows request when API key is valid in DDB."""
     monkeypatch.setenv(EnvVars.API_AUTH_ENABLED, "true")
-    mocker.patch("documentai_api.app.get_all_schemas", return_value={"test": {}})
+    mocker.patch("documentai_api.app_dictionary.get_all_schemas", return_value={"test": {}})
 
     with patch("documentai_api.utils.auth._verify_with_ddb"):
         response = api_client.get("/v1/dictionary/schemas", headers={"API-Key": "docai_somekey"})

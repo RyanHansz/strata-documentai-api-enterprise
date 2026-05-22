@@ -103,17 +103,17 @@ def test_batch_upload_with_external_fields(api_client, pdf_file):
     ):
         files = [("files", pdf_file("doc1.pdf"))]
         data = {
-            "external_document_id": "ext-doc-batch",
-            "external_system_id": "ext-sys-batch",
+            "external_document_id": "test-ext-doc-id",
+            "external_system_id": "test-ext-sys-id",
             "ai_consent_flag": "true",
         }
         response = api_client.post("/v1/documents/batch", files=files, data=data)
 
     assert response.status_code == 200
-    call_kwargs = mock_insert.call_args.kwargs
-    assert call_kwargs["external_document_id"] == "ext-doc-batch"
-    assert call_kwargs["external_system_id"] == "ext-sys-batch"
-    assert call_kwargs["ai_consent_flag"] is True
+    record = mock_insert.call_args[0][0]
+    assert record.external_document_id == "test-ext-doc-id"
+    assert record.external_system_id == "test-ext-sys-id"
+    assert record.ai_consent_flag is True
 
 
 def test_batch_upload_ai_consent_declined(api_client, pdf_file):
@@ -672,9 +672,9 @@ def test_batch_upload_tenant_propagation(api_client, pdf_file):
     assert create_kwargs["tenant_id"] == "test-tenant"
     assert create_kwargs["client_name"] == "test-client"
     # insert_minimal_ddb_record receives tenant info
-    insert_kwargs = mock_insert.call_args.kwargs
-    assert insert_kwargs["tenant_id"] == "test-tenant"
-    assert insert_kwargs["client_name"] == "test-client"
+    record = mock_insert.call_args[0][0]
+    assert record.tenant_id == "test-tenant"
+    assert record.client_name == "test-client"
 
 
 def test_batch_upload_category_propagation(api_client, pdf_file):
@@ -708,8 +708,8 @@ def test_batch_upload_category_propagation(api_client, pdf_file):
         mock_create.call_args[0][2] == DocumentCategory.INCOME
     )
     # insert_minimal_ddb_record receives category
-    insert_kwargs = mock_insert.call_args.kwargs
-    assert insert_kwargs["user_provided_document_category"] == DocumentCategory.INCOME
+    record = mock_insert.call_args[0][0]
+    assert record.category == DocumentCategory.INCOME
 
 
 # =============================================================================

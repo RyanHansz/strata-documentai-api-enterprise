@@ -41,6 +41,7 @@ from documentai_api.models.api_responses import (
     BatchStatusResponse,
     BatchUploadResponse,
 )
+from documentai_api.models.document_record import DocumentRecord
 from documentai_api.schemas.document_batches import DocumentBatches
 from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils.auth import UserContext, get_user_context
@@ -54,7 +55,7 @@ from documentai_api.utils.ddb import (
     query_jobs_by_batch_id,
     update_batch_status,
 )
-from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.dto import ClassificationData
 from documentai_api.utils.tenant import validate_batch_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
@@ -106,19 +107,21 @@ async def _process_batch_files(
 
         await asyncio.to_thread(
             insert_minimal_ddb_record,
-            ddb_key=ddb_key,
-            original_file_name=file.filename,
-            job_id=job_id,
-            user_provided_document_category=category,
-            trace_id=trace_id,
-            batch_id=batch_id,
-            content_type=actual_content_type,
-            external_document_id=external_document_id,
-            external_system_id=external_system_id,
-            ai_consent_flag=ai_consent_flag,
-            upload_method=upload_method,
-            tenant_id=tenant_id,
-            client_name=client_name,
+            DocumentRecord(
+                ddb_key=ddb_key,
+                original_file_name=file.filename,
+                job_id=job_id,
+                category=category,
+                trace_id=trace_id,
+                batch_id=batch_id,
+                content_type=actual_content_type,
+                external_document_id=external_document_id,
+                external_system_id=external_system_id,
+                ai_consent_flag=ai_consent_flag,
+                upload_method=upload_method,
+                tenant_id=tenant_id,
+                client_name=client_name,
+            ),
         )
 
         if ai_consent_flag is False:

@@ -33,7 +33,7 @@ from documentai_api.utils.ddb import (
     set_bda_processing_status_started,
     upsert_initial_ddb_record,
 )
-from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.dto import ClassificationData
 from documentai_api.utils.s3 import parse_s3_uri
 
 logger = documentai_api.logging.get_logger(__name__)

@@ -25,7 +25,7 @@ def mock_env(runtime_required_env):
 
 @pytest.fixture(autouse=True)
 def mock_preclassification(mocker):
-    from documentai_api.utils.models import BedrockClassificationResult
+    from documentai_api.utils.dto import BedrockClassificationResult
 
     mocker.patch("documentai_api.utils.ddb.get_bda_percentage", return_value=1.0)
     mocker.patch("documentai_api.utils.ddb.get_all_schemas", return_value={"W2": {}, "Payslip": {}})

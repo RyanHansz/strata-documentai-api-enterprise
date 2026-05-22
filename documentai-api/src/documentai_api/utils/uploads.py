@@ -113,7 +113,7 @@ async def dispatch_upload(
 ) -> None:
     """Upload file to S3. Classifies DDB record on failure."""
     from documentai_api.utils.ddb import classify_as_conversion_failed, classify_as_failed
-    from documentai_api.utils.models import ClassificationData
+    from documentai_api.utils.dto import ClassificationData
 
     try:
         await upload_document_for_processing(

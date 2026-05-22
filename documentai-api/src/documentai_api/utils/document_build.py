@@ -8,7 +8,7 @@ from documentai_api.schemas.document_builds import DocumentBuilds
 from documentai_api.services import ddb as ddb_service
 from documentai_api.services import s3 as s3_service
 from documentai_api.utils import s3 as s3_utils
-from documentai_api.utils.models import PageMetadata
+from documentai_api.utils.dto import PageMetadata
 
 # Sentinel page number reserved for the per-build metadata record (not a real page).
 _METADATA_PAGE_NUMBER = 0

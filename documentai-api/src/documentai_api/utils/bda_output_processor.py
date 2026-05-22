@@ -14,7 +14,7 @@ from documentai_api.utils.ddb import (
     classify_as_no_document_detected,
     classify_as_success,
 )
-from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.dto import ClassificationData
 from documentai_api.utils.response_codes import ResponseCodes
 
 logger = get_logger(__name__)

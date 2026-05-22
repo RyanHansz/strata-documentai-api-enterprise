@@ -7,7 +7,7 @@ from pypdf import PdfReader, PdfWriter
 
 from documentai_api.logging import get_logger
 from documentai_api.services import s3 as s3_service
-from documentai_api.utils.models import PageMetadata
+from documentai_api.utils.dto import PageMetadata
 
 logger = get_logger(__name__)
 

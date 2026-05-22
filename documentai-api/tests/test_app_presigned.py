@@ -32,9 +32,9 @@ def test_create_presigned_url_success(api_client, mocker):
     assert "fields" in result
     assert result["fields"]["Content-Type"] == "application/pdf"
     mock_insert.assert_called_once()
-    call_kwargs = mock_insert.call_args.kwargs
-    assert call_kwargs["process_status"] == ProcessStatus.PENDING_UPLOAD
-    assert call_kwargs["upload_method"] == UploadMethod.PRESIGNED
+    record = mock_insert.call_args[0][0]
+    assert record.process_status == ProcessStatus.PENDING_UPLOAD
+    assert record.upload_method == UploadMethod.PRESIGNED
 
 
 def test_create_presigned_url_with_category(api_client, mocker):
@@ -389,6 +389,6 @@ def test_tenant_id_propagated_to_ddb(api_client, mocker):
     data = {"filename": "test.pdf", "content_type": "application/pdf"}
     api_client.post("/v1/documents/presigned-url", data=data)
 
-    call_kwargs = mock_insert.call_args.kwargs
-    assert call_kwargs["tenant_id"] == "test-tenant"
-    assert call_kwargs["client_name"] == "test-client"
+    record = mock_insert.call_args[0][0]
+    assert record.tenant_id == "test-tenant"
+    assert record.client_name == "test-client"
