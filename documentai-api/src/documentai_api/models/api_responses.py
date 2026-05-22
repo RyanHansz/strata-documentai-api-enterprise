@@ -1,3 +1,7 @@
+# TODO: Split this file into domain-specific modules (e.g. api_responses_batch.py,
+# api_responses_documents.py) once it grows further. Keeping in one file for now
+# for discoverability.
+
 from typing import Any
 
 from pydantic import AwareDatetime, HttpUrl
@@ -158,3 +162,40 @@ class PresignedUploadResponse(BaseApiResponse):
     headers: dict[str, str]
     job_id: str
     expires_in: int
+
+
+# =============================================================================
+# Batch responses
+# =============================================================================
+
+
+class BatchJobItem(BaseApiResponse):
+    file_name: str
+    job_id: str
+    batch_position: int
+
+
+class BatchUploadResponse(BaseApiResponse):
+    batch_id: str
+    batch_status: str
+    total_files: int
+    created_at: str
+    jobs: list[BatchJobItem]
+
+
+class BatchStatusJobItem(BaseApiResponse):
+    file_name: str | None
+    job_id: str | None
+    job_status: str
+
+
+class BatchStatusResponse(BaseApiResponse):
+    batch_id: str
+    batch_status: str
+    total_jobs: int
+    completed: int
+    in_progress: int
+    failed: int
+    created_at: str | None
+    category: str | None
+    jobs: list[BatchStatusJobItem]

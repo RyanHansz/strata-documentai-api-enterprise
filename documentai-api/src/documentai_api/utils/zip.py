@@ -4,31 +4,56 @@ import zipfile
 
 from fastapi import HTTPException, UploadFile
 
+from documentai_api.config.constants import (
+    MAX_BATCH_SIZE,
+    MAX_ZIP_DECOMPRESSION_RATIO,
+    MAX_ZIP_EXTRACTED_BYTES,
+)
 from documentai_api.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def extract_files_from_zip(zip_file: UploadFile) -> list[UploadFile]:
+async def extract_files_from_zip(
+    zip_file: UploadFile, max_files: int = MAX_BATCH_SIZE
+) -> list[UploadFile]:
     """Extract files from zip archive and return as UploadFile list.
 
     Handles nested directories - extracts all files using basename only.
+    Enforces max file count and decompression ratio limits during extraction.
     """
     try:
         zip_content = await zip_file.read()
-        files = []
+        zip_size = len(zip_content)
+        files: list[UploadFile] = []
+        total_extracted = 0
 
         with zipfile.ZipFile(io.BytesIO(zip_content)) as zf:
-            # zf.infolist() returns all directories and files recursively
-            # filter out directories and process files only
             for file_info in zf.infolist():
                 if file_info.is_dir():
                     continue
 
-                # extract file content
-                file_content = zf.read(file_info.filename)
+                if len(files) >= max_files:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"ZIP contains more than {max_files} files",
+                    )
 
-                # create UploadFile from extracted content
+                file_content = zf.read(file_info.filename)
+                total_extracted += len(file_content)
+
+                if total_extracted > MAX_ZIP_EXTRACTED_BYTES:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="ZIP extracted size exceeds limit",
+                    )
+
+                if zip_size > 0 and total_extracted / zip_size > MAX_ZIP_DECOMPRESSION_RATIO:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="ZIP decompression ratio exceeds limit",
+                    )
+
                 upload_file = UploadFile(
                     filename=os.path.basename(file_info.filename), file=io.BytesIO(file_content)
                 )
@@ -39,6 +64,8 @@ async def extract_files_from_zip(zip_file: UploadFile) -> list[UploadFile]:
 
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="Invalid zip file") from None
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error extracting zip: {e}")
         raise HTTPException(status_code=500, detail="Failed to extract zip file") from e

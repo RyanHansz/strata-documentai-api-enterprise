@@ -22,13 +22,19 @@ def ddb_doc_metadata_table_resource(aws_credentials):
             AttributeDefinitions=[
                 {"AttributeName": "fileName", "AttributeType": "S"},
                 {"AttributeName": "jobId", "AttributeType": "S"},
+                {"AttributeName": "batchId", "AttributeType": "S"},
             ],
             GlobalSecondaryIndexes=[
                 {
                     "IndexName": "job-id-index",
                     "KeySchema": [{"AttributeName": "jobId", "KeyType": "HASH"}],
                     "Projection": {"ProjectionType": "ALL"},
-                }
+                },
+                {
+                    "IndexName": "batch-id-index",
+                    "KeySchema": [{"AttributeName": "batchId", "KeyType": "HASH"}],
+                    "Projection": {"ProjectionType": "ALL"},
+                },
             ],
             BillingMode="PAY_PER_REQUEST",
         )
@@ -87,6 +93,24 @@ def document_build_ddb_table(aws_credentials, monkeypatch):
 
 
 @pytest.fixture
+def ddb_batches_table(aws_credentials, monkeypatch):
+    """Create a moto-backed document-batches table and point env vars at it."""
+    import boto3
+    from moto import mock_aws
+
+    with mock_aws():
+        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+        table = dynamodb.create_table(
+            TableName="document-batches",
+            KeySchema=[{"AttributeName": "batchId", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "batchId", "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        monkeypatch.setenv(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME, table.name)
+        yield table
+
+
+@pytest.fixture
 def api_keys_table(aws_credentials, monkeypatch):
     from moto import mock_aws
 
@@ -111,6 +135,7 @@ def set_ddb_doc_metadata_table_env_vars(ddb_doc_metadata_table_resource, monkeyp
         EnvVars.DOCUMENTAI_DOCUMENT_METADATA_TABLE_NAME, ddb_doc_metadata_table_resource.name
     )
     monkeypatch.setenv(EnvVars.DOCUMENTAI_DOCUMENT_METADATA_JOB_ID_INDEX_NAME, "job-id-index")
+    monkeypatch.setenv(EnvVars.DOCUMENTAI_DOCUMENT_METADATA_BATCH_ID_INDEX_NAME, "batch-id-index")
     monkeypatch.setenv(EnvVars.DOCUMENTAI_INPUT_LOCATION, "s3://test/input")
     monkeypatch.setenv(EnvVars.DOCUMENTAI_OUTPUT_LOCATION, "s3://test/output")
     monkeypatch.setenv(EnvVars.BDA_PROJECT_ARN, "arn:aws:test")

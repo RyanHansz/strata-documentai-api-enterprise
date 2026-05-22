@@ -47,15 +47,16 @@ def create_batch(
     status: BatchStatus = BatchStatus.UPLOADING,
     tenant_id: str | None = None,
     client_name: str | None = None,
-) -> None:
-    """Create batch record in DynamoDB."""
+) -> str:
+    """Create batch record in DynamoDB. Returns the createdAt timestamp."""
     table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME)
 
+    created_at = datetime.now(UTC).isoformat()
     item: dict[str, Any] = {
         DocumentBatches.BATCH_ID: batch_id,
         DocumentBatches.BATCH_STATUS: status.value,
         DocumentBatches.TOTAL_FILES: total_files,
-        DocumentBatches.CREATED_AT: datetime.now(UTC).isoformat(),
+        DocumentBatches.CREATED_AT: created_at,
         # TTL 30 days from creation - batch records are short-lived tracking artifacts.
         DocumentBatches.TIME_TO_LIVE: int(datetime.now(UTC).timestamp() + (30 * 24 * 60 * 60)),
     }
@@ -69,11 +70,30 @@ def create_batch(
     if client_name is not None:
         item[DocumentBatches.CLIENT_NAME] = client_name
 
-    ddb_service.put_item(table_name, item)
+    try:
+        ddb_service.put_item(
+            table_name,
+            item,
+            condition_expression="attribute_not_exists(batchId)",
+        )
+    except Exception as e:
+        if "ConditionalCheckFailedException" in type(e).__name__ or (
+            hasattr(e, "response")
+            and e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException"
+        ):
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=409, detail="Batch ID already exists") from None
+        raise
+    return created_at
 
 
 def update_batch_status(
-    batch_id: str, status: BatchStatus, error_message: str | None = None
+    batch_id: str,
+    status: BatchStatus,
+    error_message: str | None = None,
+    condition_expression: str | None = None,
+    condition_values: dict[str, Any] | None = None,
 ) -> None:
     """Update batch status (and optionally errorMessage)."""
     table_name = get_required_env(EnvVars.DOCUMENTAI_DOCUMENT_BATCHES_TABLE_NAME)
@@ -89,7 +109,21 @@ def update_batch_status(
         update_expr += f", {DocumentBatches.ERROR_MESSAGE} = :errorMessage"
         expr_values[":errorMessage"] = error_message
 
-    ddb_service.update_item(table_name, key, update_expr, expr_values)
+    if condition_values:
+        expr_values.update(condition_values)
+
+    kwargs: dict[str, Any] = {
+        "Key": key,
+        "UpdateExpression": update_expr,
+        "ExpressionAttributeValues": expr_values,
+    }
+    if condition_expression:
+        kwargs["ConditionExpression"] = condition_expression
+
+    from documentai_api.utils.aws_client_factory import AWSClientFactory
+
+    ddb_table = AWSClientFactory.get_ddb_table(table_name)
+    ddb_table.update_item(**kwargs)
 
 
 def get_batch(batch_id: str) -> dict[str, Any] | None:

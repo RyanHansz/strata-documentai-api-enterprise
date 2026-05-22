@@ -14,10 +14,15 @@ def get_item(
     return cast(dict[str, Any], response.get("Item"))
 
 
-def put_item(table_name: str, item: dict[str, Any]) -> None:
-    """Put item to DynamoDB table."""
+def put_item(
+    table_name: str, item: dict[str, Any], condition_expression: str | None = None
+) -> None:
+    """Put item to DynamoDB table. Optional condition_expression for conditional writes."""
     ddb_table = AWSClientFactory.get_ddb_table(table_name)
-    ddb_table.put_item(Item=item)
+    kwargs: dict[str, Any] = {"Item": item}
+    if condition_expression:
+        kwargs["ConditionExpression"] = condition_expression
+    ddb_table.put_item(**kwargs)
 
 
 def update_item(

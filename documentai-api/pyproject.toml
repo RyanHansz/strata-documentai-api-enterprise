@@ -118,6 +118,7 @@ exclude_lines = [
 addopts = "-m 'not audit'"
 markers = [
     "audit: mark a test as a security audit log test, to be run isolated from other tests",
+    "integration: tests that use moto or real external services",
 ]
 
 [build-system]

@@ -41,6 +41,13 @@ S3_METADATA_KEY_BATCH_ID = UPLOAD_METADATA_KEYS["batch_id"]
 MAX_BATCH_SIZE = 25
 MAX_SEARCH_JOB_IDS = 25
 
+# Default error message for DDB persistence (avoids leaking exception internals)
+DEFAULT_DDB_ERROR_MESSAGE = "Internal processing error"
+
+# ZIP extraction limits
+MAX_ZIP_DECOMPRESSION_RATIO = 100
+MAX_ZIP_EXTRACTED_BYTES = 500 * 1024 * 1024  # 500MB
+
 # === Metric aggregates (S3 prefixes) ===
 S3_RAW_DDB_DATA_PREFIX = "raw/utc/date"
 S3_AGG_DDB_DATA_DAILY_PREFIX = "aggregated/utc/date"

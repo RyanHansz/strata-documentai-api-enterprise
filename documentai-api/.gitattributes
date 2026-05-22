@@ -1,2 +1,1 @@
-# Basic git attributes for Python projects
-*.py text eol=lf
+* text=auto eol=lf
