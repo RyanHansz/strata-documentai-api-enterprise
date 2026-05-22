@@ -3,8 +3,7 @@
 import pytest
 from fastapi import HTTPException
 
-from documentai_api.app import get_v1_document_processing_results
-from documentai_api.utils.jobs import JobStatus, get_job_status
+from documentai_api.utils.jobs import JobStatus, get_job_status, poll_for_completion
 from documentai_api.utils.uploads import upload_document_for_processing
 
 
@@ -102,9 +101,9 @@ async def test_upload_document_for_processing_success(
 
 
 @pytest.mark.asyncio
-async def test_get_v1_document_processing_results_success(mocker):
+async def test_poll_for_completion_success(mocker):
     """Test polling returns results when processing completes."""
-    mock_get_job_status = mocker.patch("documentai_api.app.get_job_status")
+    mock_get_job_status = mocker.patch("documentai_api.utils.jobs.get_job_status")
     mock_get_job_status.return_value = JobStatus(
         ddb_record={"fileName": "test.pdf"},
         object_key="test.pdf",
@@ -112,15 +111,15 @@ async def test_get_v1_document_processing_results_success(mocker):
         v1_response_json='{"jobId": "test-job-id", "jobStatus": "success", "message": "Document processed successfully"}',
     )
 
-    result = await get_v1_document_processing_results("test-job-id", timeout=10)
+    result = await poll_for_completion("test-job-id", timeout=10)
 
     assert result.job_status == "success"
 
 
 @pytest.mark.asyncio
-async def test_get_v1_document_processing_results_timeout(mocker):
+async def test_poll_for_completion_timeout(mocker):
     """Test polling timeout with object_key."""
-    mock_get_job_status = mocker.patch("documentai_api.app.get_job_status")
+    mock_get_job_status = mocker.patch("documentai_api.utils.jobs.get_job_status")
     mock_get_job_status.return_value = JobStatus(
         ddb_record={"fileName": "test.pdf"},
         object_key="test.pdf",
@@ -128,9 +127,9 @@ async def test_get_v1_document_processing_results_timeout(mocker):
         v1_response_json=None,
     )
 
-    mock_classify_as_failed = mocker.patch("documentai_api.app.classify_as_failed")
+    mock_classify_as_failed = mocker.patch("documentai_api.utils.jobs.classify_as_failed")
 
-    result = await get_v1_document_processing_results("test-job-id", timeout=1)
+    result = await poll_for_completion("test-job-id", timeout=1)
 
     mock_classify_as_failed.assert_called_once()
     assert result.job_status == "failed"
@@ -138,9 +137,9 @@ async def test_get_v1_document_processing_results_timeout(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_v1_document_processing_results_timeout_no_object_key(mocker):
+async def test_poll_for_completion_timeout_no_object_key(mocker):
     """Test polling timeout without object_key."""
-    mock_get_job_status = mocker.patch("documentai_api.app.get_job_status")
+    mock_get_job_status = mocker.patch("documentai_api.utils.jobs.get_job_status")
     mock_get_job_status.return_value = JobStatus(
         ddb_record=None,
         object_key=None,
@@ -148,7 +147,7 @@ async def test_get_v1_document_processing_results_timeout_no_object_key(mocker):
         v1_response_json=None,
     )
 
-    result = await get_v1_document_processing_results("test-job-id", timeout=1)
+    result = await poll_for_completion("test-job-id", timeout=1)
 
     assert result.job_status == "failed"
     assert "timeout" in result.message
@@ -185,9 +184,9 @@ async def test_upload_document_for_processing_invalid_category_type(
 
 
 @pytest.mark.asyncio
-async def test_get_v1_document_processing_results_polling_error(mocker):
+async def test_poll_for_completion_polling_error(mocker):
     """Test polling continues after DDB errors."""
-    mock_get_job_status = mocker.patch("documentai_api.app.get_job_status")
+    mock_get_job_status = mocker.patch("documentai_api.utils.jobs.get_job_status")
     # first call raises exception, second call returns success
     mock_get_job_status.side_effect = [
         Exception("DDB error"),
@@ -199,6 +198,6 @@ async def test_get_v1_document_processing_results_polling_error(mocker):
         ),
     ]
 
-    result = await get_v1_document_processing_results("test-job-id", timeout=10)
+    result = await poll_for_completion("test-job-id", timeout=10)
 
     assert result.job_status == "success"

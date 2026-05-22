@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 from typing import Annotated, Any
@@ -27,7 +26,6 @@ from documentai_api.config.constants import (
     DictionaryBlueprintSchema,
     DictionaryFormatType,
     FileValidation,
-    ProcessStatus,
 )
 from documentai_api.config.env import get_app_env_config
 from documentai_api.logging import get_logger
@@ -43,14 +41,8 @@ from documentai_api.models.api_responses import (
     ExtractionRuleItem,
     ExtractionRulesListResponse,
     HealthResponse,
-    JobStatusResponse,
 )
 from documentai_api.utils.auth import verify_api_key
-from documentai_api.utils.ddb import (
-    classify_as_failed,
-)
-from documentai_api.utils.jobs import get_job_status
-from documentai_api.utils.models import ClassificationData
 from documentai_api.utils.response_builder import build_csv_response
 from documentai_api.utils.schemas import get_all_fields, get_all_schemas, get_document_schema
 
@@ -96,60 +88,6 @@ def discover_endpoints(app: FastAPI) -> dict[str, str]:
         if isinstance(route, APIRoute) and route.name and route.path not in CONFIG_EXCLUDED_ROUTES:
             endpoints[route.name] = route.path
     return dict(sorted(endpoints.items()))
-
-
-# =============================================================================
-# Shared utilities (used by multiple routers)
-# =============================================================================
-
-
-async def get_v1_document_processing_results(job_id: str, timeout: int) -> JobStatusResponse:
-    """Poll for document processing completion with timeout."""
-    elapsed_time = 0
-    object_key = None
-    polling_interval = 5
-
-    while elapsed_time < timeout:
-        try:
-            job_status = get_job_status(job_id)
-
-            if job_status.object_key:
-                object_key = job_status.object_key
-
-            # processing complete, return results
-            if (
-                job_status.process_status
-                and ProcessStatus.is_completed(job_status.process_status)
-                and job_status.v1_response_json
-            ):
-                return JobStatusResponse(**json.loads(job_status.v1_response_json))
-
-            # still processing, wait and poll again
-            await asyncio.sleep(polling_interval)
-            elapsed_time += polling_interval
-
-        except Exception as e:
-            msg = f"Error polling DynamoDB for job {job_id}: {e}"
-            logger.error(msg)
-
-            await asyncio.sleep(polling_interval)
-            elapsed_time += polling_interval
-
-    # timeout - update ddb with failure if we have object_key
-    if object_key:
-        classify_as_failed(
-            object_key=object_key,
-            error_message="Processing timeout",
-            data=ClassificationData(
-                additional_info=f"Processing did not complete within {timeout} seconds"
-            ),
-        )
-
-    return JobStatusResponse(
-        job_id=job_id,
-        job_status=ProcessStatus.FAILED.value,
-        message=f"Processing timeout after {timeout} seconds",
-    )
 
 
 # =============================================================================

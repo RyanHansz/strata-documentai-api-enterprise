@@ -1,5 +1,6 @@
 """Shared helpers used by single-file and batch upload endpoints."""
 
+import asyncio
 import os
 from io import BytesIO
 from typing import BinaryIO
@@ -29,21 +30,25 @@ def generate_unique_filename(filename: str, job_id: str) -> str:
     """Generate a unique filename embedding the job_id."""
     if not filename:
         raise ValueError("Invalid filename")
-    file_name = filename.split(".")[0]
-    file_extension = filename.split(".")[-1]
-    return f"{file_name}-{job_id}.{file_extension}"
+    # Strip path components to prevent traversal or unintended S3 prefixes
+    filename = os.path.basename(filename)
+    name, ext = os.path.splitext(filename)
+    return f"{name}-{job_id}{ext}"
 
 
 async def validate_file_type(file: UploadFile) -> str:
-    """Read the file, detect its MIME type, verify it's supported, reset the read pointer.
+    """Detect MIME type from file header bytes, verify it's supported, reset pointer.
+
+    Only reads the first 2048 bytes for detection (filetype needs ~261).
 
     Returns the detected content type string.
 
     Raises:
         HTTPException 400: if the type isn't in FileValidation.SUPPORTED_CONTENT_TYPES.
     """
-    file_content = await file.read()
-    actual_content_type = filetype.guess_mime(file_content) or "application/octet-stream"
+    header_bytes = await file.read(2048)
+    actual_content_type = filetype.guess_mime(header_bytes) or "application/octet-stream"
+    await file.seek(0)
 
     if not FileValidation.is_supported(actual_content_type):
         raise HTTPException(
@@ -55,7 +60,27 @@ async def validate_file_type(file: UploadFile) -> str:
             ),
         )
 
-    file.file.seek(0)  # reset pointer for subsequent reads
+    return actual_content_type
+
+
+async def validate_upload(file: UploadFile) -> str:
+    """Full upload validation: filename, MIME detection, mismatch warning.
+
+    Returns the detected content type string.
+
+    Raises:
+        HTTPException 400: if filename is missing or type isn't supported.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
+    actual_content_type = await validate_file_type(file)
+
+    if file.content_type and file.content_type != actual_content_type:
+        logger.warning(
+            f"MIME mismatch: declared={file.content_type} detected={actual_content_type} file={file.filename}"
+        )
+
     return actual_content_type
 
 
@@ -73,6 +98,55 @@ def _save_original_to_preprocessing(file_bytes: bytes, object_key: str, content_
         logger.info(f"Original file saved to preprocessing: {pre_key}")
     except Exception as e:
         logger.warning(f"Failed to save original to preprocessing: {e}")
+
+
+async def dispatch_upload(
+    *,
+    src_file: BinaryIO,
+    dest_path: str,
+    original_file_name: str,
+    content_type: str,
+    category: DocumentCategory | None,
+    job_id: str,
+    trace_id: str,
+    ddb_key: str,
+) -> None:
+    """Upload file to S3. Classifies DDB record on failure."""
+    from documentai_api.utils.ddb import classify_as_conversion_failed, classify_as_failed
+    from documentai_api.utils.models import ClassificationData
+
+    try:
+        await upload_document_for_processing(
+            src_file=src_file,
+            dest_path=dest_path,
+            original_file_name=original_file_name,
+            content_type=content_type,
+            user_provided_document_category=category,
+            job_id=job_id,
+            trace_id=trace_id,
+        )
+    except ImageConversionError as e:
+        await asyncio.to_thread(
+            classify_as_conversion_failed, object_key=ddb_key, error_message=str(e)
+        )
+        raise
+    except HTTPException as e:
+        await asyncio.to_thread(
+            classify_as_failed,
+            object_key=ddb_key,
+            error_message=e.detail,
+            data=ClassificationData(additional_info=e.detail),
+        )
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected upload failure for job {job_id}")
+        await asyncio.to_thread(
+            classify_as_failed,
+            object_key=ddb_key,
+            error_message=str(e),
+            data=ClassificationData(additional_info=f"Unexpected error: {e}"),
+        )
+        raise HTTPException(status_code=500, detail="Upload failed") from e
 
 
 async def upload_document_for_processing(
@@ -96,7 +170,7 @@ async def upload_document_for_processing(
 
     # handle format conversion for mobile/unsupported-by-BDA formats
     if FileValidation.needs_conversion(content_type):
-        file_bytes = src_file.read()
+        file_bytes = await asyncio.to_thread(src_file.read)
         logger.info(
             f"Converting {content_type} to PNG",
             extra={"upload_filename": original_file_name, "original_size_bytes": len(file_bytes)},
@@ -105,7 +179,7 @@ async def upload_document_for_processing(
         _save_original_to_preprocessing(file_bytes, os.path.basename(object_key), content_type)
 
         try:
-            converted_bytes = convert_to_png(file_bytes, content_type)
+            converted_bytes = await asyncio.to_thread(convert_to_png, file_bytes, content_type)
         except ValueError as e:
             raise ImageConversionError(str(e)) from e
 

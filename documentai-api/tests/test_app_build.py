@@ -207,7 +207,7 @@ def test_submit_document_build_synchronous(document_build_ddb_table, mock_docume
     from documentai_api.models.api_responses import JobStatusResponse
 
     with patch(
-        "documentai_api.app.get_v1_document_processing_results",
+        "documentai_api.utils.jobs.poll_for_completion",
         new_callable=AsyncMock,
     ) as mock_get_results:
         mock_document_build_submit["get_pages"].return_value = [

@@ -312,9 +312,9 @@ async def submit_document_build(
             )
         else:
             # Lazy import: app.py imports this module's router, so avoid a top-level cycle.
-            from documentai_api.app import get_v1_document_processing_results
+            from documentai_api.utils.jobs import poll_for_completion
 
-            return await get_v1_document_processing_results(job_id, timeout)
+            return await poll_for_completion(job_id, timeout)
     except HTTPException:
         raise
     except Exception as e:

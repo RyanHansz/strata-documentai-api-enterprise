@@ -1,25 +1,28 @@
 """Document endpoints (upload, query, delete, search)."""
 
+import asyncio
 import json
 import uuid
 from typing import Annotated
 
-import filetype  # type: ignore[import-untyped]
 from fastapi import (
     APIRouter,
     Depends,
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
 )
+from pydantic import StringConstraints
 
 from documentai_api.config.constants import (
+    MAX_SEARCH_JOB_IDS,
     ApiVisualizationTag,
+    ConfigDefaults,
     DocumentCategory,
-    FileValidation,
     ProcessStatus,
     UploadMethod,
 )
@@ -35,24 +38,65 @@ from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.utils.auth import UserContext, get_user_context
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
-    classify_as_conversion_failed,
-    classify_as_failed,
     insert_minimal_ddb_record,
 )
-from documentai_api.utils.jobs import get_job_status
-from documentai_api.utils.models import ClassificationData
+from documentai_api.utils.jobs import get_job_status, poll_for_completion
 from documentai_api.utils.tenant import validate_document_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
+    dispatch_upload,
     generate_unique_filename,
-    upload_document_for_processing,
+    validate_upload,
 )
 
 logger = get_logger(__name__)
 
+# Router-level dep enforces auth on every route even if a handler forgets to inject `auth`.
+# FastAPI caches the call within a request, so the per-handler `Depends(get_user_context)` is free.
 router = APIRouter(dependencies=[Depends(get_user_context)])
 
-MAX_SEARCH_JOB_IDS = 25
+
+# =============================================================================
+# Upload helpers (extracted for testability)
+# =============================================================================
+
+
+async def persist_initial_record(
+    *,
+    ddb_key: str,
+    filename: str,
+    job_id: str,
+    category: DocumentCategory | None,
+    trace_id: str,
+    content_type: str,
+    external_document_id: str | None,
+    external_system_id: str | None,
+    ai_consent_flag: bool | None,
+    auth: UserContext,
+) -> None:
+    """Write the initial tracking record to DDB."""
+    await asyncio.to_thread(
+        # TODO: Replace positional kwargs with a DocumentRecord Pydantic model
+        # so adding a field is a one-line change instead of touching every call site.
+        insert_minimal_ddb_record,
+        ddb_key=ddb_key,
+        original_file_name=filename,
+        job_id=job_id,
+        user_provided_document_category=category,
+        trace_id=trace_id,
+        content_type=content_type,
+        external_document_id=external_document_id,
+        external_system_id=external_system_id,
+        ai_consent_flag=ai_consent_flag,
+        upload_method=UploadMethod.DIRECT,
+        tenant_id=auth.tenant_id,
+        client_name=auth.client_name,
+    )
+
+
+# =============================================================================
+# Endpoints
+# =============================================================================
 
 
 @router.post(
@@ -70,110 +114,93 @@ async def create_document(
     ] = None,
     trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
     external_document_id: Annotated[
-        str | None, Form(description="External document identifier")
+        str | None,
+        Form(description="External document identifier"),
+        StringConstraints(max_length=256, pattern=r"^[\w.\-/]+$"),
     ] = None,
     external_system_id: Annotated[
-        str | None, Form(description="External system identifier")
+        str | None,
+        Form(description="External system identifier"),
+        StringConstraints(max_length=128, pattern=r"^[\w.\-]+$"),
     ] = None,
     ai_consent_flag: Annotated[bool | None, Form(description="AI consent flag")] = None,
     wait: bool = False,
-    timeout: int = 180,
+    timeout: Annotated[int, Query(ge=1)] = ConfigDefaults.MAX_WAIT_SECONDS
+    - ConfigDefaults.ALB_TIMEOUT_BUFFER_SECONDS,
 ) -> UploadAsyncResponse | JobStatusResponse:
     """Upload a document for processing."""
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Filename is required")
-
     if not trace_id:
         trace_id = str(uuid.uuid4())
 
-    file_content = await file.read()
-    actual_content_type = filetype.guess_mime(file_content) or "application/octet-stream"
+    # Set trace ID early so it's included on the success path. Note: for HTTPException
+    # responses, FastAPI builds a fresh JSONResponse and this header is dropped — a
+    # middleware or custom exception handler is responsible for echoing it on errors.
+    response.headers["X-Trace-ID"] = trace_id
+
+    actual_content_type = await validate_upload(file)
+    filename: str = file.filename  # type: ignore[assignment]  # validate_upload raises if None
 
     logger.info(
-        "Upload received",
+        "Processing document",
         extra={
-            "upload_filename": file.filename,
-            "declared_content_type": file.content_type,
-            "detected_content_type": actual_content_type,
-            "size_bytes": len(file_content),
-            "first_bytes_hex": file_content[:16].hex() if file_content else "",
+            "upload_filename": filename,
+            "category": category.value if category else None,
+            "content_type": actual_content_type,
         },
     )
 
-    if not FileValidation.is_supported(actual_content_type):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Invalid file type detected '{actual_content_type}'. File must be "
-                f"{', '.join(FileValidation.SUPPORTED_CONTENT_TYPES)}"
-            ),
-        )
-
-    logger.info(
-        f"Processing {file.filename}; category: {category}; content-type: {actual_content_type}"
-    )
-
-    file.file.seek(0)
     job_id = str(uuid.uuid4())
-    unique_file_name = generate_unique_filename(file.filename, job_id)
-    original_file_name = file.filename
+    # TODO: If external_document_id and external_system_id are provided, check for
+    # existing record with same combo for this tenant to prevent duplicates.
+    # Requires a GSI on (tenant_id, external_system_id#external_document_id) or a
+    # separate dedup lookup table with a short TTL (e.g. 24h) to catch retries
+    # without conflicting with document retention TTLs.
+    unique_file_name = generate_unique_filename(filename, job_id)
     ddb_key = unique_file_name
 
     input_location = get_aws_config().documentai_input_location
     dest_path = f"{input_location}/{unique_file_name}"
 
-    insert_minimal_ddb_record(
+    await persist_initial_record(
         ddb_key=ddb_key,
-        original_file_name=original_file_name,
+        filename=filename,
         job_id=job_id,
-        user_provided_document_category=category,
+        category=category,
         trace_id=trace_id,
         content_type=actual_content_type,
         external_document_id=external_document_id,
         external_system_id=external_system_id,
         ai_consent_flag=ai_consent_flag,
-        upload_method=UploadMethod.DIRECT,
-        tenant_id=auth.tenant_id,
-        client_name=auth.client_name,
+        auth=auth,
     )
 
-    # bypass processing if AI consent not provided
+    # Short-circuit if AI consent not provided
     if ai_consent_flag is False:
-        result = classify_as_ai_consent_declined(object_key=ddb_key)
-        response.headers["X-Trace-ID"] = trace_id
+        await asyncio.to_thread(classify_as_ai_consent_declined, object_key=ddb_key)
         return JobStatusResponse(
             job_id=job_id,
             job_status=ProcessStatus.AI_CONSENT_DECLINED.value,
-            message=result.get("response_message", "Document not processed"),
+            message="Document not processed — AI consent not provided",
         )
 
     try:
-        await upload_document_for_processing(
+        await dispatch_upload(
             src_file=file.file,
             dest_path=dest_path,
-            original_file_name=file.filename,
+            original_file_name=filename,
             content_type=actual_content_type,
-            user_provided_document_category=category,
+            category=category,
             job_id=job_id,
             trace_id=trace_id,
+            ddb_key=ddb_key,
         )
-    except ImageConversionError as e:
-        result = classify_as_conversion_failed(object_key=ddb_key, error_message=str(e))
-        response.headers["X-Trace-ID"] = trace_id
+    except ImageConversionError:
         return JobStatusResponse(
             job_id=job_id,
             job_status=ProcessStatus.CONVERSION_FAILED.value,
-            message=result.get("response_message", "Image conversion failed"),
+            message="Image conversion failed",
         )
-    except HTTPException as e:
-        classify_as_failed(
-            object_key=ddb_key,
-            error_message=e.detail,
-            data=ClassificationData(additional_info=e.detail),
-        )
-        raise
 
-    response.headers["X-Trace-ID"] = trace_id
     if not wait:
         return UploadAsyncResponse(
             job_id=job_id,
@@ -181,9 +208,10 @@ async def create_document(
             message="Document uploaded successfully",
         )
     else:
-        from documentai_api.app import get_v1_document_processing_results
-
-        return await get_v1_document_processing_results(job_id, timeout)
+        safe_timeout = min(
+            timeout, ConfigDefaults.MAX_WAIT_SECONDS - ConfigDefaults.ALB_TIMEOUT_BUFFER_SECONDS
+        )
+        return await poll_for_completion(job_id, safe_timeout, request=request)
 
 
 @router.get(

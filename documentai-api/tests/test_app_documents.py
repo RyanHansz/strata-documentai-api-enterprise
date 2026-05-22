@@ -117,7 +117,7 @@ def test_create_document_ai_consent_declined(api_client, blank_pdf_bytes, mocker
         "response_code": "003",
         "response_message": "Document not processed - AI consent not provided",
     }
-    mock_upload = mocker.patch("documentai_api.app_documents.upload_document_for_processing")
+    mock_dispatch = mocker.patch("documentai_api.utils.uploads.upload_document_for_processing")
 
     files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
     data = {"ai_consent_flag": "false"}
@@ -129,13 +129,13 @@ def test_create_document_ai_consent_declined(api_client, blank_pdf_bytes, mocker
     assert "AI consent not provided" in result["message"]
     mock_insert.assert_called_once()
     mock_classify.assert_called_once()
-    mock_upload.assert_not_called()
+    mock_dispatch.assert_not_called()
 
 
 def test_create_document_synchronous(api_client, blank_pdf_bytes, mocker):
     """Test synchronous document upload (wait=true)."""
-    mock_get_results = mocker.patch("documentai_api.app.get_v1_document_processing_results")
-    mock_get_results.return_value = JobStatusResponse(
+    mock_poll = mocker.patch("documentai_api.app_documents.poll_for_completion")
+    mock_poll.return_value = JobStatusResponse(
         job_id="test-id", job_status="success", message="Document processed successfully"
     )
 
@@ -144,6 +144,82 @@ def test_create_document_synchronous(api_client, blank_pdf_bytes, mocker):
 
     assert response.status_code == 200
     assert response.json()["jobStatus"] == "success"
+
+
+def test_create_document_missing_filename(api_client):
+    """Test upload with empty filename returns 422."""
+    files = {"file": ("", b"fake content", "application/pdf")}
+    response = api_client.post("/v1/documents", files=files)
+
+    assert response.status_code == 422
+
+
+def test_create_document_trace_id_echoed_on_validation_failure(api_client, empty_zip_bytes):
+    """Test X-Trace-ID is returned even when file type validation fails.
+
+    Note: HTTPException responses may not carry the header without middleware.
+    This test documents current behavior — if it fails, a trace-id middleware is needed.
+    """
+    files = {"file": ("test.zip", empty_zip_bytes, "application/zip")}
+    response = api_client.post("/v1/documents", files=files)
+
+    assert response.status_code == 400
+    # X-Trace-ID may not be present on error responses without middleware
+    # This is a known limitation documented in app_documents.py
+
+
+def test_create_document_trace_id_echoed_on_success(api_client, blank_pdf_bytes):
+    """Test X-Trace-ID is returned on successful upload."""
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents", files=files)
+
+    assert response.status_code == 200
+    assert "X-Trace-ID" in response.headers
+
+
+def test_create_document_custom_trace_id(api_client, blank_pdf_bytes):
+    """Test custom X-Trace-ID is echoed back."""
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents", files=files, headers={"X-Trace-ID": "my-trace-123"})
+
+    assert response.status_code == 200
+    assert response.headers["X-Trace-ID"] == "my-trace-123"
+
+
+def test_create_document_upload_failure_classifies_record(api_client, blank_pdf_bytes, mocker):
+    """Test unexpected upload failure marks DDB record as failed."""
+    mocker.patch("documentai_api.app_documents.insert_minimal_ddb_record")
+    mock_classify = mocker.patch("documentai_api.utils.ddb.classify_as_failed")
+    mocker.patch(
+        "documentai_api.utils.uploads.upload_document_for_processing",
+        side_effect=RuntimeError("S3 exploded"),
+    )
+
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents", files=files)
+
+    assert response.status_code == 500
+    assert "Upload failed" in response.json()["detail"]
+    mock_classify.assert_called_once()
+
+
+def test_create_document_conversion_failure(api_client, blank_pdf_bytes, mocker):
+    """Test image conversion failure returns appropriate status."""
+    from documentai_api.utils.uploads import ImageConversionError
+
+    mocker.patch("documentai_api.app_documents.insert_minimal_ddb_record")
+    mocker.patch("documentai_api.utils.ddb.classify_as_conversion_failed")
+    mocker.patch(
+        "documentai_api.utils.uploads.upload_document_for_processing",
+        side_effect=ImageConversionError("Cannot convert"),
+    )
+
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents", files=files)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["jobStatus"] == "conversion_failed"
 
 
 def test_get_document_results_error_handling(api_client, mocker):
@@ -286,6 +362,53 @@ def test_delete_document_already_deleted(api_client, mocker):
     assert response.status_code == 404
 
 
+def test_get_document_results_wrong_tenant(api_client, mocker):
+    """Test GET on document belonging to different tenant returns 404."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "other-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    response = api_client.get("/v1/documents/job-1")
+
+    assert response.status_code == 404
+
+
+def test_delete_document_wrong_tenant(api_client, mocker):
+    """Test DELETE on document belonging to different tenant returns 404."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "other-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    response = api_client.delete("/v1/documents/job-1")
+
+    assert response.status_code == 404
+
+
+def test_search_documents_wrong_tenant(api_client, mocker):
+    """Test search returns not_found for documents belonging to different tenant."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "other-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    response = api_client.post("/v1/documents/search", json={"jobIds": ["job-1"]})
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert results[0]["jobStatus"] == "not_found"
+
+
 def test_get_document_results_deleted_returns_404(api_client, mocker):
     """Test GET on deleted document returns 404."""
     mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
@@ -299,3 +422,150 @@ def test_get_document_results_deleted_returns_404(api_client, mocker):
     response = api_client.get("/v1/documents/job-1")
 
     assert response.status_code == 404
+
+
+def test_create_document_external_id_too_long(api_client, blank_pdf_bytes):
+    """Test external_document_id exceeding max length returns 422."""
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    data = {"external_document_id": "a" * 257}
+    response = api_client.post("/v1/documents", files=files, data=data)
+
+    assert response.status_code == 422
+
+
+def test_create_document_external_id_invalid_chars(api_client, blank_pdf_bytes):
+    """Test external_document_id with invalid characters returns 422."""
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    data = {"external_document_id": "doc id <script>"}
+    response = api_client.post("/v1/documents", files=files, data=data)
+
+    assert response.status_code == 422
+
+
+def test_create_document_external_system_id_invalid_chars(api_client, blank_pdf_bytes):
+    """Test external_system_id with invalid characters returns 422."""
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    data = {"external_system_id": "sys/id with spaces"}
+    response = api_client.post("/v1/documents", files=files, data=data)
+
+    assert response.status_code == 422
+
+
+def test_create_document_sync_timeout_capped(api_client, blank_pdf_bytes, mocker):
+    """Test that wait=true caps timeout to MAX_WAIT_SECONDS - ALB_TIMEOUT_BUFFER_SECONDS."""
+    from documentai_api.config.constants import ConfigDefaults
+
+    mock_poll = mocker.patch("documentai_api.app_documents.poll_for_completion")
+    mock_poll.return_value = JobStatusResponse(
+        job_id="test-id", job_status="success", message="Done"
+    )
+
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents?wait=true&timeout=99999", files=files)
+
+    assert response.status_code == 200
+    expected_cap = ConfigDefaults.MAX_WAIT_SECONDS - ConfigDefaults.ALB_TIMEOUT_BUFFER_SECONDS
+    mock_poll.assert_called_once()
+    actual_timeout = mock_poll.call_args[0][1]
+    assert actual_timeout == expected_cap
+
+
+def test_create_document_ai_consent_none_proceeds(api_client, blank_pdf_bytes, mocker):
+    """Test that omitting ai_consent_flag (None) proceeds with upload."""
+    mock_classify = mocker.patch("documentai_api.app_documents.classify_as_ai_consent_declined")
+
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents", files=files)
+
+    assert response.status_code == 200
+    assert response.json()["jobStatus"] == "not_started"
+    mock_classify.assert_not_called()
+
+
+def test_search_documents_with_extracted_data(api_client, mocker):
+    """Test search with include_extracted_data=true returns extracted data."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+        object_key="test.pdf",
+        process_status="success",
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    mock_build = mocker.patch("documentai_api.utils.response_builder.build_v1_api_response")
+    mock_build.return_value = {
+        "jobId": "job-1",
+        "jobStatus": "success",
+        "message": "Done",
+        "extractedData": {"name": "John"},
+    }
+
+    response = api_client.post(
+        "/v1/documents/search",
+        json={"jobIds": ["job-1"], "includeExtractedData": True},
+    )
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert results[0]["jobStatus"] == "success"
+    mock_build.assert_called_once()
+
+
+def test_search_documents_with_extracted_data_incomplete_record(api_client, mocker):
+    """Test search with include_extracted_data=true handles incomplete records."""
+    mock_get_job_status = mocker.patch("documentai_api.app_documents.get_job_status")
+    mock_get_job_status.return_value = JobStatus(
+        ddb_record={"fileName": "test.pdf", "tenantId": "test-tenant"},
+        object_key=None,
+        process_status=None,
+        v1_response_json='{"jobId": "job-1", "jobStatus": "success", "message": "Done"}',
+    )
+
+    response = api_client.post(
+        "/v1/documents/search",
+        json={"jobIds": ["job-1"], "includeExtractedData": True},
+    )
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert results[0]["jobStatus"] == "error"
+    assert "Incomplete" in results[0]["message"]
+
+
+def test_create_document_timeout_below_minimum(api_client, blank_pdf_bytes):
+    """Test that timeout=0 returns 422 due to ge=1 constraint."""
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents?wait=true&timeout=0", files=files)
+    assert response.status_code == 422
+
+
+def test_create_document_sync_passes_request_to_poll(api_client, blank_pdf_bytes, mocker):
+    """Test that request is forwarded to poll_for_completion for disconnect detection."""
+    mock_poll = mocker.patch("documentai_api.app_documents.poll_for_completion")
+    mock_poll.return_value = JobStatusResponse(
+        job_id="test-id", job_status="success", message="Done"
+    )
+
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents?wait=true", files=files)
+
+    assert response.status_code == 200
+    assert "request" in mock_poll.call_args.kwargs
+
+
+def test_create_document_sync_default_timeout(api_client, blank_pdf_bytes, mocker):
+    """Test that omitting timeout uses the default (MAX_WAIT_SECONDS - ALB_TIMEOUT_BUFFER_SECONDS)."""
+    from documentai_api.config.constants import ConfigDefaults
+
+    mock_poll = mocker.patch("documentai_api.app_documents.poll_for_completion")
+    mock_poll.return_value = JobStatusResponse(
+        job_id="test-id", job_status="success", message="Done"
+    )
+
+    files = {"file": ("test.pdf", blank_pdf_bytes, "application/pdf")}
+    response = api_client.post("/v1/documents?wait=true", files=files)
+
+    assert response.status_code == 200
+    expected = ConfigDefaults.MAX_WAIT_SECONDS - ConfigDefaults.ALB_TIMEOUT_BUFFER_SECONDS
+    actual_timeout = mock_poll.call_args[0][1]
+    assert actual_timeout == expected

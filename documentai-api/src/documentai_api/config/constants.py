@@ -39,6 +39,7 @@ S3_METADATA_KEY_BATCH_ID = UPLOAD_METADATA_KEYS["batch_id"]
 # prevent throttling. Can be raised if the BDA quota is raised.
 # TODO: make configurable via environment variable for different deployments.
 MAX_BATCH_SIZE = 25
+MAX_SEARCH_JOB_IDS = 25
 
 # === Metric aggregates (S3 prefixes) ===
 S3_RAW_DDB_DATA_PREFIX = "raw/utc/date"
