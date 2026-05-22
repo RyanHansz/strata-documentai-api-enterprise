@@ -1,5 +1,5 @@
 from typing import Any
-from urllib.parse import unquote_plus, urlparse
+from urllib.parse import quote, unquote_plus, urlparse
 
 from documentai_api.services import s3 as s3_service
 
@@ -86,3 +86,21 @@ def extract_s3_info_from_event(
         return file_key, bucket_name, metadata
 
     return file_key, bucket_name
+
+
+def build_s3_key(*parts: str) -> str:
+    """Build an S3 object key from path segments, normalizing slashes.
+
+    Strips leading/trailing slashes from each part and joins with '/'.
+    Empty parts are skipped.
+    """
+    return "/".join(p.strip("/") for p in parts if p)
+
+
+def sanitize_for_s3_metadata(value: str, max_length: int = 512) -> str:
+    """Percent-encode non-ASCII and truncate for S3 user metadata.
+
+    S3 user metadata values must be ASCII-only and the total of all
+    user metadata is capped at 2 KB.
+    """
+    return quote(value[:max_length], safe="")

@@ -8,21 +8,25 @@ from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
-    Form,
-    Header,
     HTTPException,
     Query,
     Request,
     Response,
     UploadFile,
 )
-from pydantic import StringConstraints
 
+from documentai_api.annotations import (
+    AiConsentFlag,
+    AuthUser,
+    CategoryField,
+    ExternalDocumentId,
+    ExternalSystemId,
+    TraceId,
+)
 from documentai_api.config.constants import (
     MAX_SEARCH_JOB_IDS,
     ApiVisualizationTag,
     ConfigDefaults,
-    DocumentCategory,
     ProcessStatus,
     UploadMethod,
 )
@@ -35,7 +39,7 @@ from documentai_api.models.api_responses import (
     UploadAsyncResponse,
 )
 from documentai_api.schemas.document_metadata import DocumentMetadata
-from documentai_api.utils.auth import UserContext, get_user_context
+from documentai_api.utils.auth import get_user_context
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
     insert_minimal_ddb_record,
@@ -58,44 +62,6 @@ router = APIRouter(dependencies=[Depends(get_user_context)])
 
 
 # =============================================================================
-# Upload helpers (extracted for testability)
-# =============================================================================
-
-
-async def persist_initial_record(
-    *,
-    ddb_key: str,
-    filename: str,
-    job_id: str,
-    category: DocumentCategory | None,
-    trace_id: str,
-    content_type: str,
-    external_document_id: str | None,
-    external_system_id: str | None,
-    ai_consent_flag: bool | None,
-    auth: UserContext,
-) -> None:
-    """Write the initial tracking record to DDB."""
-    await asyncio.to_thread(
-        # TODO: Replace positional kwargs with a DocumentRecord Pydantic model
-        # so adding a field is a one-line change instead of touching every call site.
-        insert_minimal_ddb_record,
-        ddb_key=ddb_key,
-        original_file_name=filename,
-        job_id=job_id,
-        user_provided_document_category=category,
-        trace_id=trace_id,
-        content_type=content_type,
-        external_document_id=external_document_id,
-        external_system_id=external_system_id,
-        ai_consent_flag=ai_consent_flag,
-        upload_method=UploadMethod.DIRECT,
-        tenant_id=auth.tenant_id,
-        client_name=auth.client_name,
-    )
-
-
-# =============================================================================
 # Endpoints
 # =============================================================================
 
@@ -114,22 +80,12 @@ async def create_document(
     request: Request,
     response: Response,
     file: UploadFile,
-    auth: Annotated[UserContext, Depends(get_user_context)],
-    category: Annotated[
-        DocumentCategory | None, Form(description="Type of document being uploaded")
-    ] = None,
-    trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
-    external_document_id: Annotated[
-        str | None,
-        Form(description="External document identifier"),
-        StringConstraints(max_length=256, pattern=r"^[\w.\-/]+$"),
-    ] = None,
-    external_system_id: Annotated[
-        str | None,
-        Form(description="External system identifier"),
-        StringConstraints(max_length=128, pattern=r"^[\w.\-]+$"),
-    ] = None,
-    ai_consent_flag: Annotated[bool | None, Form(description="AI consent flag")] = None,
+    auth: AuthUser,
+    category: CategoryField = None,
+    trace_id: TraceId = None,
+    external_document_id: ExternalDocumentId = None,
+    external_system_id: ExternalSystemId = None,
+    ai_consent_flag: AiConsentFlag = True,
     wait: bool = False,
     timeout: Annotated[int, Query(ge=1)] = ConfigDefaults.MAX_WAIT_SECONDS
     - ConfigDefaults.ALB_TIMEOUT_BUFFER_SECONDS,
@@ -167,18 +123,25 @@ async def create_document(
     input_location = get_aws_config().documentai_input_location
     dest_path = f"{input_location}/{unique_file_name}"
 
-    await persist_initial_record(
-        ddb_key=ddb_key,
-        filename=filename,
-        job_id=job_id,
-        category=category,
-        trace_id=trace_id,
-        content_type=actual_content_type,
-        external_document_id=external_document_id,
-        external_system_id=external_system_id,
-        ai_consent_flag=ai_consent_flag,
-        auth=auth,
-    )
+    try:
+        await asyncio.to_thread(
+            insert_minimal_ddb_record,
+            ddb_key=ddb_key,
+            original_file_name=filename,
+            job_id=job_id,
+            user_provided_document_category=category,
+            trace_id=trace_id,
+            content_type=actual_content_type,
+            external_document_id=external_document_id,
+            external_system_id=external_system_id,
+            ai_consent_flag=ai_consent_flag,
+            upload_method=UploadMethod.DIRECT,
+            tenant_id=auth.tenant_id,
+            client_name=auth.client_name,
+        )
+    except Exception:
+        logger.exception("Failed to create tracking record")
+        raise HTTPException(status_code=500, detail="Failed to create upload record") from None
 
     # Short-circuit if AI consent not provided
     if ai_consent_flag is False:
@@ -227,9 +190,9 @@ async def create_document(
 async def get_document_results(
     job_id: uuid.UUID,
     response: Response,
-    auth: Annotated[UserContext, Depends(get_user_context)],
+    auth: AuthUser,
     include_extracted_data: bool = False,
-    trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
+    trace_id: TraceId = None,
 ) -> JobStatusResponse:
     """Get processing results by job ID."""
     if not trace_id:
@@ -284,9 +247,7 @@ async def get_document_results(
     name="deleteDocument",
     tags=[ApiVisualizationTag.DOCUMENTS_DELETE],
 )
-async def delete_document(
-    job_id: uuid.UUID, auth: Annotated[UserContext, Depends(get_user_context)]
-) -> Response:
+async def delete_document(job_id: uuid.UUID, auth: AuthUser) -> Response:
     """Delete a document by job ID. Removes S3 file and marks DDB record as deleted."""
     from documentai_api.services import s3 as s3_service
     from documentai_api.utils.s3 import parse_s3_uri
@@ -333,9 +294,7 @@ async def delete_document(
     name="searchDocuments",
     tags=[ApiVisualizationTag.DOCUMENTS_QUERY],
 )
-async def search_documents(
-    body: DocumentSearchRequest, auth: Annotated[UserContext, Depends(get_user_context)]
-) -> DocumentSearchResponse:
+async def search_documents(body: DocumentSearchRequest, auth: AuthUser) -> DocumentSearchResponse:
     """Search for multiple documents by job IDs."""
     if not body.job_ids:
         raise HTTPException(status_code=400, detail="job_ids must not be empty")

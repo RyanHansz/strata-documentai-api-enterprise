@@ -95,34 +95,48 @@ def get_last_modified_at(bucket: str, key: str) -> datetime:
     return response["LastModified"]
 
 
-def generate_presigned_url(
+def generate_presigned_post(
     bucket: str,
     key: str,
     content_type: str,
+    max_size_bytes: int,
     metadata: dict[str, str] | None = None,
     expiration: int = 900,
-) -> str:
-    """Generate a presigned URL for PUT operation.
+) -> dict[str, Any]:
+    """Generate a presigned POST for browser/mobile-direct uploads.
+
+    Unlike presigned PUT URLs, POST policies enforce size and content-type
+    at S3 — the upload is rejected before bytes land if conditions aren't met.
 
     Args:
         bucket: S3 bucket name
         key: S3 object key
-        content_type: Content type for the upload
-        metadata: S3 metadata dictionary
-        expiration: URL expiration time in seconds (default: 15 minutes)
+        content_type: Required content type for the upload
+        max_size_bytes: Maximum allowed upload size in bytes
+        metadata: S3 user metadata to attach to the object
+        expiration: Policy expiration time in seconds (default: 15 minutes)
 
     Returns:
-        Presigned URL as string
+        Dict with 'url' and 'fields' for the client to POST.
     """
     s3_client = AWSClientFactory.get_s3_client()
 
-    params: dict[str, Any] = {
-        "Bucket": bucket,
-        "Key": key,
-        "ContentType": content_type,
-    }
+    fields: dict[str, str] = {"Content-Type": content_type}
+    conditions: list[Any] = [
+        {"Content-Type": content_type},
+        ["content-length-range", 1, max_size_bytes],
+    ]
 
     if metadata:
-        params["Metadata"] = metadata
+        for k, v in metadata.items():
+            meta_key = f"x-amz-meta-{k}"
+            fields[meta_key] = v
+            conditions.append({meta_key: v})
 
-    return s3_client.generate_presigned_url("put_object", Params=params, ExpiresIn=expiration)
+    return s3_client.generate_presigned_post(
+        Bucket=bucket,
+        Key=key,
+        Fields=fields,
+        Conditions=conditions,
+        ExpiresIn=expiration,
+    )

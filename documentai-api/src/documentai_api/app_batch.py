@@ -14,12 +14,16 @@ from fastapi import (
     APIRouter,
     Depends,
     Form,
-    Header,
     HTTPException,
     Response,
     UploadFile,
 )
 
+from documentai_api.annotations import (
+    AiConsentFlag,
+    AuthUser,
+    TraceId,
+)
 from documentai_api.config.constants import (
     DEFAULT_DDB_ERROR_MESSAGE,
     MAX_BATCH_SIZE,
@@ -239,16 +243,16 @@ async def _execute_batch(
 async def upload_document_batch(
     response: Response,
     files: Annotated[list[UploadFile], Form(description="Documents to process")],
-    auth: Annotated[UserContext, Depends(get_user_context)],
+    auth: AuthUser,
     category: Annotated[DocumentCategory | None, Form()] = None,
-    trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
+    trace_id: TraceId = None,
     external_document_id: Annotated[
         str | None, Form(description="External document identifier (applied to all files in batch)")
     ] = None,
     external_system_id: Annotated[
         str | None, Form(description="External system identifier (applied to all files in batch)")
     ] = None,
-    ai_consent_flag: Annotated[bool | None, Form(description="AI consent flag")] = None,
+    ai_consent_flag: AiConsentFlag = True,
 ) -> BatchUploadResponse:
     """Upload multiple documents as a single batch."""
     if not trace_id:
@@ -283,16 +287,16 @@ async def upload_document_batch(
 async def upload_zip_batch(
     response: Response,
     zip_file: Annotated[UploadFile, Form(description="ZIP file containing documents")],
-    auth: Annotated[UserContext, Depends(get_user_context)],
+    auth: AuthUser,
     category: Annotated[DocumentCategory | None, Form()] = None,
-    trace_id: Annotated[str | None, Header(alias="X-Trace-ID")] = None,
+    trace_id: TraceId = None,
     external_document_id: Annotated[
         str | None, Form(description="External document identifier (applied to all files in batch)")
     ] = None,
     external_system_id: Annotated[
         str | None, Form(description="External system identifier (applied to all files in batch)")
     ] = None,
-    ai_consent_flag: Annotated[bool | None, Form(description="AI consent flag")] = None,
+    ai_consent_flag: AiConsentFlag = True,
 ) -> BatchUploadResponse:
     """Upload a ZIP archive of documents as a single batch."""
     if not trace_id:
