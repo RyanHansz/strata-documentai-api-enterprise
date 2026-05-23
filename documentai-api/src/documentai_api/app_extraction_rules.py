@@ -13,11 +13,11 @@ from documentai_api.models.api_responses import (
     ExtractionRuleItem,
     ExtractionRulesListResponse,
 )
-from documentai_api.utils.auth import verify_api_key
+from documentai_api.utils.auth import get_user_context
 
 logger = get_logger(__name__)
 
-router = APIRouter(dependencies=[Depends(verify_api_key)])
+router = APIRouter(dependencies=[Depends(get_user_context)])
 
 
 class ExtractionRuleRequest(BaseModel):

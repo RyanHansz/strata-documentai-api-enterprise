@@ -31,10 +31,10 @@ def _add_tenant(table, tenant_id: str, display_name: str = "Test", **kwargs):
 
 
 def test_get_tenant_found(tenants_table):
-    _add_tenant(tenants_table, "tenant-a", "Tenant Corp")
-    result = tenants_util.get_tenant("tenant-a")
+    _add_tenant(tenants_table, "test-tenant", "Tenant Name")
+    result = tenants_util.get_tenant("test-tenant")
     assert result is not None
-    assert result[TenantRecord.TENANT_ID] == "tenant-a"
+    assert result[TenantRecord.TENANT_ID] == "test-tenant"
 
 
 def test_get_tenant_not_found(tenants_table):
@@ -60,31 +60,31 @@ def test_list_tenants_all(tenants_table):
 
 def test_create_tenant_success(tenants_table):
     result = tenants_util.create_tenant(
-        "tenant-a", "Tenant Corp", primary_contact="admin@tenant.com"
+        "test-tenant", "Tenant Name", primary_contact="admin@tenant.com"
     )
 
-    assert result[TenantRecord.TENANT_ID] == "tenant-a"
-    assert result[TenantRecord.DISPLAY_NAME] == "Tenant Corp"
+    assert result[TenantRecord.TENANT_ID] == "test-tenant"
+    assert result[TenantRecord.DISPLAY_NAME] == "Tenant Name"
     assert result[TenantRecord.PRIMARY_CONTACT] == "admin@tenant.com"
     assert result[TenantRecord.IS_ACTIVE] is True
     assert TenantRecord.CREATED_AT in result
 
     # Verify in DDB
-    item = tenants_table.get_item(Key={TenantRecord.TENANT_ID: "tenant-a"})["Item"]
-    assert item[TenantRecord.DISPLAY_NAME] == "Tenant Corp"
+    item = tenants_table.get_item(Key={TenantRecord.TENANT_ID: "test-tenant"})["Item"]
+    assert item[TenantRecord.DISPLAY_NAME] == "Tenant Name"
 
 
 def test_create_tenant_already_exists(tenants_table):
-    _add_tenant(tenants_table, "tenant-a", "Tenant Corp")
+    _add_tenant(tenants_table, "test-tenant", "Tenant Name")
 
     with pytest.raises(ValueError, match="already exists"):
-        tenants_util.create_tenant("tenant-a", "Tenant Corp")
+        tenants_util.create_tenant("test-tenant", "Tenant Name")
 
 
 def test_update_tenant_success(tenants_table):
-    _add_tenant(tenants_table, "tenant-a", "Old Name", is_active=True)
+    _add_tenant(tenants_table, "test-tenant", "Old Name", is_active=True)
 
-    result = tenants_util.update_tenant("tenant-a", display_name="New Name")
+    result = tenants_util.update_tenant("test-tenant", display_name="New Name")
     assert result[TenantRecord.DISPLAY_NAME] == "New Name"
     assert TenantRecord.UPDATED_AT in result
 
@@ -95,18 +95,18 @@ def test_update_tenant_not_found(tenants_table):
 
 
 def test_update_tenant_no_fields(tenants_table):
-    _add_tenant(tenants_table, "tenant-a", "Tenant Corp")
+    _add_tenant(tenants_table, "test-tenant", "Tenant Name")
 
     with pytest.raises(ValueError, match="No fields to update"):
-        tenants_util.update_tenant("tenant-a")
+        tenants_util.update_tenant("test-tenant")
 
 
 def test_deactivate_tenant_success(tenants_table):
-    _add_tenant(tenants_table, "tenant-a", "Tenant Corp", is_active=True)
-    assert tenants_util.deactivate_tenant("tenant-a") is True
+    _add_tenant(tenants_table, "test-tenant", "Tenant Name", is_active=True)
+    assert tenants_util.deactivate_tenant("test-tenant") is True
 
     # Verify in DDB
-    item = tenants_table.get_item(Key={TenantRecord.TENANT_ID: "tenant-a"})["Item"]
+    item = tenants_table.get_item(Key={TenantRecord.TENANT_ID: "test-tenant"})["Item"]
     assert item[TenantRecord.IS_ACTIVE] is False
 
 
@@ -120,61 +120,61 @@ def test_deactivate_tenant_not_found(tenants_table):
 
 
 def test_document_tenant_access_passes_when_tenant_matches():
-    record = {"tenantId": "tenant-a", "fileName": "test.pdf"}
-    validate_document_tenant_access(record, "tenant-a", "job-123")
+    record = {"tenantId": "test-tenant", "fileName": "test.pdf"}
+    validate_document_tenant_access(record, "test-tenant", "test-job-id")
 
 
 def test_document_tenant_access_raises_404_when_tenant_mismatches():
-    record = {"tenantId": "tenant-a", "fileName": "test.pdf"}
+    record = {"tenantId": "test-tenant", "fileName": "test.pdf"}
     with pytest.raises(HTTPException) as exc_info:
-        validate_document_tenant_access(record, "tenant-b", "job-123")
+        validate_document_tenant_access(record, "other-tenant", "test-job-id")
     assert exc_info.value.status_code == 404
 
 
 def test_document_tenant_access_raises_404_when_record_is_none():
     with pytest.raises(HTTPException) as exc_info:
-        validate_document_tenant_access(None, "tenant-a", "job-123")
+        validate_document_tenant_access(None, "test-tenant", "test-job-id")
     assert exc_info.value.status_code == 404
 
 
 def test_document_tenant_access_raises_404_when_record_has_no_tenant_id():
     record = {"fileName": "test.pdf"}
     with pytest.raises(HTTPException) as exc_info:
-        validate_document_tenant_access(record, "tenant-a", "job-123")
+        validate_document_tenant_access(record, "test-tenant", "test-job-id")
     assert exc_info.value.status_code == 404
 
 
 def test_document_tenant_access_does_not_reveal_resource_existence():
     """Both 'not found' and 'wrong tenant' return the same 404 message."""
-    record = {"tenantId": "tenant-a", "fileName": "test.pdf"}
+    record = {"tenantId": "test-tenant", "fileName": "test.pdf"}
 
     with pytest.raises(HTTPException) as wrong_tenant:
-        validate_document_tenant_access(record, "tenant-b", "job-123")
+        validate_document_tenant_access(record, "other-tenant", "test-job-id")
 
     with pytest.raises(HTTPException) as not_found:
-        validate_document_tenant_access(None, "tenant-b", "job-123")
+        validate_document_tenant_access(None, "other-tenant", "test-job-id")
 
     assert wrong_tenant.value.detail == not_found.value.detail
 
 
 def test_batch_tenant_access_passes_when_tenant_matches():
-    auth = UserContext(tenant_id="tenant-a", client_name="client-1")
+    auth = UserContext(tenant_id="test-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_batch") as mock_get:
-        mock_get.return_value = {"batchId": "batch-1", "tenantId": "tenant-a"}
+        mock_get.return_value = {"batchId": "batch-1", "tenantId": "test-tenant"}
         validate_batch_tenant_access("batch-1", auth)
 
 
 def test_batch_tenant_access_raises_404_when_tenant_mismatches():
-    auth = UserContext(tenant_id="tenant-b", client_name="client-1")
+    auth = UserContext(tenant_id="other-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_batch") as mock_get:
-        mock_get.return_value = {"batchId": "batch-1", "tenantId": "tenant-a"}
+        mock_get.return_value = {"batchId": "batch-1", "tenantId": "test-tenant"}
         with pytest.raises(HTTPException) as exc_info:
             validate_batch_tenant_access("batch-1", auth)
         assert exc_info.value.status_code == 404
 
 
 def test_batch_tenant_access_raises_404_when_batch_not_found():
-    auth = UserContext(tenant_id="tenant-a", client_name="client-1")
+    auth = UserContext(tenant_id="test-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_batch") as mock_get:
         mock_get.return_value = None
         with pytest.raises(HTTPException) as exc_info:
@@ -183,7 +183,7 @@ def test_batch_tenant_access_raises_404_when_batch_not_found():
 
 
 def test_batch_tenant_access_raises_404_when_batch_has_no_tenant_id():
-    auth = UserContext(tenant_id="tenant-a", client_name="client-1")
+    auth = UserContext(tenant_id="test-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_batch") as mock_get:
         mock_get.return_value = {"batchId": "batch-1"}
         with pytest.raises(HTTPException) as exc_info:
@@ -192,23 +192,23 @@ def test_batch_tenant_access_raises_404_when_batch_has_no_tenant_id():
 
 
 def test_build_tenant_access_passes_when_tenant_matches():
-    auth = UserContext(tenant_id="tenant-a", client_name="client-1")
+    auth = UserContext(tenant_id="test-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_build_metadata") as mock_get:
-        mock_get.return_value = {"buildId": "build-1", "tenantId": "tenant-a"}
+        mock_get.return_value = {"buildId": "build-1", "tenantId": "test-tenant"}
         validate_build_tenant_access("build-1", auth)
 
 
 def test_build_tenant_access_raises_404_when_tenant_mismatches():
-    auth = UserContext(tenant_id="tenant-b", client_name="client-1")
+    auth = UserContext(tenant_id="other-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_build_metadata") as mock_get:
-        mock_get.return_value = {"buildId": "build-1", "tenantId": "tenant-a"}
+        mock_get.return_value = {"buildId": "build-1", "tenantId": "test-tenant"}
         with pytest.raises(HTTPException) as exc_info:
             validate_build_tenant_access("build-1", auth)
         assert exc_info.value.status_code == 404
 
 
 def test_build_tenant_access_raises_404_when_build_not_found():
-    auth = UserContext(tenant_id="tenant-a", client_name="client-1")
+    auth = UserContext(tenant_id="test-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_build_metadata") as mock_get:
         mock_get.return_value = None
         with pytest.raises(HTTPException) as exc_info:
@@ -217,7 +217,7 @@ def test_build_tenant_access_raises_404_when_build_not_found():
 
 
 def test_build_tenant_access_raises_404_when_build_has_no_tenant_id():
-    auth = UserContext(tenant_id="tenant-a", client_name="client-1")
+    auth = UserContext(tenant_id="test-tenant", client_name="client-1")
     with patch("documentai_api.utils.tenant.get_build_metadata") as mock_get:
         mock_get.return_value = {"buildId": "build-1"}
         with pytest.raises(HTTPException) as exc_info:

@@ -1,13 +1,12 @@
 """Cognito JWT verification dependency for admin endpoints."""
 
-import json
-import time
 from functools import lru_cache
-from typing import Annotated, Any, cast
-from urllib.request import urlopen
+from typing import Annotated, Any
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient, PyJWKClientError
 
 from documentai_api.config.env import get_aws_config
 from documentai_api.logging import get_logger
@@ -18,64 +17,52 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @lru_cache(maxsize=1)
-def _get_jwks() -> dict[str, Any]:
-    """Fetch and cache Cognito JWKS."""
+def _get_jwks_client() -> PyJWKClient:
+    """Create and cache a JWKS client for the Cognito user pool."""
     config = get_aws_config()
     pool_id = config.cognito_user_pool_id
     region = pool_id.split("_")[0] if pool_id else "us-east-1"
-    url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/jwks.json"
-
-    with urlopen(url) as response:
-        return cast(dict[str, Any], json.loads(response.read()))
+    jwks_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/jwks.json"
+    return PyJWKClient(jwks_url)
 
 
-def _decode_jwt_unverified(token: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Decode JWT header and payload without signature verification."""
-    import base64
-
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise ValueError("Invalid JWT format")
-
-    def _b64decode(s: str) -> bytes:
-        padding = 4 - len(s) % 4
-        return base64.urlsafe_b64decode(s + "=" * padding)
-
-    header = json.loads(_b64decode(parts[0]))
-    payload = json.loads(_b64decode(parts[1]))
-    return header, payload
-
-
-def _verify_claims(payload: dict[str, Any]) -> None:
-    """Verify JWT claims (expiry, token_use, issuer)."""
+@lru_cache(maxsize=1)
+def _get_issuer() -> str:
     config = get_aws_config()
     pool_id = config.cognito_user_pool_id
     region = pool_id.split("_")[0] if pool_id else "us-east-1"
-    expected_issuer = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
+    return f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
 
-    # Check expiry
-    if time.time() > payload.get("exp", 0):
-        raise ValueError("Token expired")
 
-    # Accept either access or id tokens. ID tokens carry the email claim used
-    # for admin audit fields; access tokens are used elsewhere.
-    if payload.get("token_use") not in ("access", "id"):
-        raise ValueError("Not an access or id token")
+def _decode_and_verify(token: str) -> dict[str, Any]:
+    """Decode and verify JWT signature + claims using Cognito JWKS."""
+    jwks_client = _get_jwks_client()
+    signing_key = jwks_client.get_signing_key_from_jwt(token)
 
-    # Check issuer
-    if payload.get("iss") != expected_issuer:
-        raise ValueError("Invalid issuer")
+    payload = jwt.decode(
+        token,
+        signing_key.key,
+        algorithms=["RS256"],
+        issuer=_get_issuer(),
+        options={
+            "verify_exp": True,
+            "verify_iss": True,
+            "verify_aud": False,  # Cognito access tokens don't have aud
+        },
+    )
+
+    # Accept either access or id tokens
+    token_use = payload.get("token_use")
+    if token_use not in ("access", "id"):
+        raise jwt.InvalidTokenError("Not an access or id token")
+
+    return payload
 
 
 async def verify_jwt(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> dict[str, Any]:
-    """Verify Cognito JWT and return claims.
-
-    For production, add full RSA signature verification using the JWKS.
-    This implementation verifies claims but trusts the token structure
-    (suitable for internal/dev use behind API Gateway).
-    """
+    """Verify Cognito JWT signature and claims, return decoded payload."""
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -86,10 +73,14 @@ async def verify_jwt(
     token = credentials.credentials
 
     try:
-        _, payload = _decode_jwt_unverified(token)
-        _verify_claims(payload)
-        return payload
-    except Exception as e:
+        return _decode_and_verify(token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+    except (jwt.InvalidTokenError, PyJWKClientError) as e:
         logger.warning(f"JWT verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

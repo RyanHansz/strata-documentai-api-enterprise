@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from documentai_api.annotations import SuperAdminClaims, verify_jwt_with_super_admin
+from documentai_api.annotations import AdminClaims, SuperAdminClaims, verify_jwt_with_role
 from documentai_api.logging import get_logger
 from documentai_api.models.tenants import (
     CreateTenantRequest,
@@ -15,14 +15,14 @@ from documentai_api.models.tenants import (
 )
 from documentai_api.schemas.tenants import TenantRecord
 from documentai_api.utils import tenants as tenants_util
+from documentai_api.utils.jwt_auth import is_super_admin, tenant_scope
 
 logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/admin/tenants",
     tags=["admin-tenants"],
-    # Tenant CRUD is super-admin only — tenant-admins must not edit other tenants.
-    dependencies=[Depends(verify_jwt_with_super_admin)],
+    dependencies=[Depends(verify_jwt_with_role)],
 )
 
 
@@ -35,6 +35,16 @@ def _to_item(record: dict[str, Any]) -> TenantItem:
         created_at=record.get(TenantRecord.CREATED_AT),
         updated_at=record.get(TenantRecord.UPDATED_AT),
     )
+
+
+def _enforce_scope(claims: dict[str, Any], tenant_id: str) -> None:
+    """Raise 403 if a tenant-admin tries to access another tenant."""
+    scope = tenant_scope(claims)
+    if scope is not None and scope != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this tenant.",
+        )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -57,21 +67,27 @@ async def create_tenant(
 
 @router.get("")
 async def list_tenants(
-    claims: SuperAdminClaims,
+    claims: AdminClaims,
     active_only: bool = True,
 ) -> ListTenantsResponse:
-    """List all tenants."""
-    records = tenants_util.list_tenants(active_only=active_only)
-    items = [_to_item(r) for r in records]
+    """List tenants. Super-admins see all; tenant-admins see only their own."""
+    scope = tenant_scope(claims)
+    if scope:
+        record = tenants_util.get_tenant(scope)
+        items = [_to_item(record)] if record else []
+    else:
+        records = tenants_util.list_tenants(active_only=active_only)
+        items = [_to_item(r) for r in records]
     return ListTenantsResponse(tenants=items, count=len(items))
 
 
 @router.get("/{tenant_id}")
 async def get_tenant(
     tenant_id: str,
-    claims: SuperAdminClaims,
+    claims: AdminClaims,
 ) -> TenantItem:
     """Get a single tenant by ID."""
+    _enforce_scope(claims, tenant_id)
     record = tenants_util.get_tenant(tenant_id)
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -82,15 +98,20 @@ async def get_tenant(
 async def update_tenant(
     tenant_id: str,
     body: UpdateTenantRequest,
-    claims: SuperAdminClaims,
+    claims: AdminClaims,
 ) -> TenantItem:
     """Update a tenant's metadata."""
+    _enforce_scope(claims, tenant_id)
+
+    # Tenant-admins cannot change activation status
+    is_active = body.is_active if is_super_admin(claims) else None
+
     try:
         updated = tenants_util.update_tenant(
             tenant_id,
             display_name=body.display_name,
             primary_contact=body.primary_contact,
-            is_active=body.is_active,
+            is_active=is_active,
         )
     except ValueError as e:
         msg = str(e)
@@ -106,7 +127,7 @@ async def delete_tenant(
     tenant_id: str,
     claims: SuperAdminClaims,
 ) -> DeleteTenantResponse:
-    """Deactivate a tenant (soft delete)."""
+    """Deactivate a tenant (soft delete). Super-admin only."""
     if not tenants_util.deactivate_tenant(tenant_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
     return DeleteTenantResponse(deleted=True, tenant_id=tenant_id)
