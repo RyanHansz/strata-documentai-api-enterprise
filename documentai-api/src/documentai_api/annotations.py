@@ -13,7 +13,11 @@ from documentai_api.config.constants import (
     DictionaryFormatType,
     DocumentCategory,
 )
-from documentai_api.utils.auth import UserContext, get_user_context
+from documentai_api.utils.auth import (
+    UserContext,
+    get_user_context_from_api_key,
+    get_user_context_with_fallback,
+)
 from documentai_api.utils.jwt_auth import require_role, require_super_admin, verify_jwt
 
 
@@ -41,10 +45,11 @@ AdminClaims = Annotated[dict[str, Any], Depends(verify_jwt_with_role)]
 SuperAdminClaims = Annotated[dict[str, Any], Depends(verify_jwt_with_super_admin)]
 
 # Auth
-# Router-level `dependencies=[Depends(get_user_context)]` enforces auth even if a handler
+# Router-level `dependencies=[Depends(get_user_context_from_api_key)]` enforces auth even if a handler
 # forgets to inject `auth`. FastAPI caches the call within a request, so the per-handler
-# `Depends(get_user_context)` via AuthUser is free (no double execution).
-AuthUser = Annotated[UserContext, Depends(get_user_context)]
+# `Depends(get_user_context_from_api_key)` via AuthUser is free (no double execution).
+AuthUser = Annotated[UserContext, Depends(get_user_context_from_api_key)]
+AuthUserWithFallback = Annotated[UserContext, Depends(get_user_context_with_fallback)]
 
 # Headers
 TraceId = Annotated[str | None, Header(alias="X-Trace-ID")]

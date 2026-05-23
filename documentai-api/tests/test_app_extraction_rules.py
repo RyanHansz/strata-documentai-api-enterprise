@@ -173,7 +173,7 @@ def test_extraction_rules_tenant_isolation(extraction_rules_table):
     from fastapi.testclient import TestClient
 
     from documentai_api.app import app
-    from documentai_api.utils.auth import UserContext, get_user_context
+    from documentai_api.utils.auth import UserContext, get_user_context_with_fallback
     from documentai_api.utils.extraction_rules import upsert_rule
 
     # Seed a rule for tenant B directly in DDB
@@ -181,7 +181,7 @@ def test_extraction_rules_tenant_isolation(extraction_rules_table):
 
     # Authenticate as tenant A
     mock_context = UserContext(tenant_id="tenant-a", client_name="client-a")
-    app.dependency_overrides[get_user_context] = lambda: mock_context
+    app.dependency_overrides[get_user_context_with_fallback] = lambda: mock_context
 
     try:
         tenant_a_client = TestClient(app)

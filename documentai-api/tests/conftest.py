@@ -72,7 +72,12 @@ def api_client(runtime_required_env):
 def disable_auth():
     """Disable API key authentication and tenant validation for tests."""
     from documentai_api.app import app
-    from documentai_api.utils.auth import UserContext, get_user_context, verify_api_key
+    from documentai_api.utils.auth import (
+        UserContext,
+        get_user_context_from_api_key,
+        get_user_context_with_fallback,
+        verify_api_key,
+    )
     from documentai_api.utils.tenant import (
         validate_batch_tenant_access,
         validate_build_tenant_access,
@@ -80,7 +85,8 @@ def disable_auth():
 
     mock_context = UserContext(tenant_id="test-tenant", client_name="test-client")
     app.dependency_overrides[verify_api_key] = lambda: mock_context
-    app.dependency_overrides[get_user_context] = lambda: mock_context
+    app.dependency_overrides[get_user_context_from_api_key] = lambda: mock_context
+    app.dependency_overrides[get_user_context_with_fallback] = lambda: mock_context
     app.dependency_overrides[validate_batch_tenant_access] = lambda: None
     app.dependency_overrides[validate_build_tenant_access] = lambda: None
     yield

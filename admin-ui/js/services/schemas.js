@@ -1,9 +1,9 @@
-import { dataClient } from "./http.js";
+import { adminClient } from "./http.js";
 
 export async function list() {
-  return dataClient.request("GET", "/v1/dictionary/schemas");
+  return adminClient.request("GET", "/v1/dictionary/schemas");
 }
 
 export async function get(documentType) {
-  return dataClient.request("GET", `/v1/dictionary/schemas/${encodeURIComponent(documentType)}`);
+  return adminClient.request("GET", `/v1/dictionary/schemas/${encodeURIComponent(documentType)}`);
 }

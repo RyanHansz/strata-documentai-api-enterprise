@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from documentai_api.annotations import AuthUser
+from documentai_api.annotations import AuthUserWithFallback
 from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import (
@@ -13,11 +13,11 @@ from documentai_api.models.api_responses import (
     ExtractionRuleItem,
     ExtractionRulesListResponse,
 )
-from documentai_api.utils.auth import get_user_context
+from documentai_api.utils.auth import get_user_context_with_fallback
 
 logger = get_logger(__name__)
 
-router = APIRouter(dependencies=[Depends(get_user_context)])
+router = APIRouter(dependencies=[Depends(get_user_context_with_fallback)])
 
 
 class ExtractionRuleRequest(BaseModel):
@@ -37,7 +37,7 @@ class ExtractionRuleRequest(BaseModel):
     tags=[ApiVisualizationTag.CONFIG_RULES],
 )
 async def get_extraction_rules(
-    auth: AuthUser,
+    auth: AuthUserWithFallback,
     document_type: str | None = None,
 ) -> Any:
     """Get extraction rules for the authenticated tenant."""
@@ -59,7 +59,7 @@ async def get_extraction_rules(
     tags=[ApiVisualizationTag.CONFIG_RULES],
 )
 async def put_extraction_rule(
-    auth: AuthUser,
+    auth: AuthUserWithFallback,
     body: ExtractionRuleRequest,
 ) -> Any:
     """Create or update an extraction rule for the authenticated tenant."""
@@ -78,7 +78,7 @@ async def put_extraction_rule(
     tags=[ApiVisualizationTag.CONFIG_RULES],
 )
 async def delete_extraction_rule(
-    auth: AuthUser,
+    auth: AuthUserWithFallback,
     document_type: str,
 ) -> Any:
     """Delete an extraction rule for the authenticated tenant."""

@@ -25,14 +25,14 @@ from documentai_api.logging import get_logger
 from documentai_api.models.api_responses import PresignedUploadResponse
 from documentai_api.models.document_record import DocumentRecord
 from documentai_api.services import s3 as s3_service
-from documentai_api.utils.auth import get_user_context
+from documentai_api.utils.auth import get_user_context_from_api_key
 from documentai_api.utils.ddb import insert_minimal_ddb_record
 from documentai_api.utils.s3 import build_s3_key, parse_s3_uri, sanitize_for_s3_metadata
 from documentai_api.utils.uploads import generate_unique_filename
 
 logger = get_logger(__name__)
 
-router = APIRouter(dependencies=[Depends(get_user_context)])
+router = APIRouter(dependencies=[Depends(get_user_context_from_api_key)])
 
 MAX_UPLOAD_SIZE_BYTES = ConfigDefaults.BDA_MAX_DOCUMENT_FILE_SIZE_BYTES
 MAX_FILENAME_LENGTH = 255

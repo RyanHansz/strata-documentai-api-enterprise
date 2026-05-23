@@ -758,7 +758,7 @@ def test_tenant_access_enforced_on_all_build_routes(method, path, document_build
     from fastapi.testclient import TestClient
 
     from documentai_api.app import app
-    from documentai_api.utils.auth import UserContext, get_user_context
+    from documentai_api.utils.auth import UserContext, get_user_context_from_api_key
     from documentai_api.utils.tenant import validate_build_tenant_access
 
     mock_context = UserContext(tenant_id="any-tenant", client_name="test-client")
@@ -770,7 +770,7 @@ def test_tenant_access_enforced_on_all_build_routes(method, path, document_build
 
     saved = dict(app.dependency_overrides)
     try:
-        app.dependency_overrides[get_user_context] = lambda: mock_context
+        app.dependency_overrides[get_user_context_from_api_key] = lambda: mock_context
         app.dependency_overrides[validate_build_tenant_access] = _reject_tenant
 
         test_client = TestClient(app)

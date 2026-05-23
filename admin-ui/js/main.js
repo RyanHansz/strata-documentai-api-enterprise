@@ -82,6 +82,7 @@ async function init() {
   if (session && !Session.isExpired()) {
     if (routeAfterLogin(session)) {
       KeysView.load();
+      BlueprintsView.load();
     }
   } else {
     Session.clear();
@@ -131,6 +132,7 @@ LoginView.init({
     const session = Session.get();
     if (routeAfterLogin(session)) {
       await KeysView.load();
+      await BlueprintsView.load();
     }
   },
 });

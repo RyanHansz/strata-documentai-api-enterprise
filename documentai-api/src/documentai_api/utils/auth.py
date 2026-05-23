@@ -5,10 +5,10 @@ import secrets
 import threading
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from documentai_api.config.constants import API_AUTH_KEY_HEADER_NAME
@@ -20,6 +20,7 @@ from documentai_api.utils.cache import get_cache
 logger = get_logger(__name__)
 
 api_key_header = APIKeyHeader(name=API_AUTH_KEY_HEADER_NAME, auto_error=False)
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class UserContext(BaseModel):
@@ -349,7 +350,7 @@ def verify_api_key(api_key: str = Depends(api_key_header)) -> None:
         _verify_with_insecure_shared_key(api_key)
 
 
-def get_user_context(api_key: str = Depends(api_key_header)) -> UserContext:
+def get_user_context_from_api_key(api_key: str = Depends(api_key_header)) -> UserContext:
     """Authenticate the request and return user context.
 
     When API_AUTH_ENABLED is true, validates against DynamoDB api-keys table
@@ -361,13 +362,13 @@ def get_user_context(api_key: str = Depends(api_key_header)) -> UserContext:
     auth_enabled = get_app_env_config().api_auth_enabled
 
     if auth_enabled:
-        return _get_user_context_from_ddb(api_key)
+        return _get_user_context_from_api_key_from_ddb(api_key)
 
     _verify_with_insecure_shared_key(api_key)
     return UserContext(tenant_id="local", client_name="local-dev")
 
 
-def _get_user_context_from_ddb(api_key: str) -> UserContext:
+def _get_user_context_from_api_key_from_ddb(api_key: str) -> UserContext:
     """Validate API key and return UserContext from DDB record."""
     if not _is_valid_key_format(api_key):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
@@ -401,4 +402,39 @@ def _get_user_context_from_ddb(api_key: str) -> UserContext:
     return UserContext(
         tenant_id=tenant_id,
         client_name=record.get(ApiKeyRecord.CLIENT_NAME, "unknown"),
+    )
+
+
+async def get_user_context_with_fallback(
+    api_key: Annotated[str | None, Depends(api_key_header)] = None,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
+) -> UserContext:
+    """Authenticate via API key or JWT Bearer token.
+
+    Tries API key first (if header present), then falls back to JWT.
+    Returns a UserContext in both cases. Used for endpoints that need to
+    serve both machine clients (API key) and admin UI users (JWT).
+    """
+    from documentai_api.utils.jwt_auth import _decode_and_verify, get_tenant_id
+
+    # Try API key first
+    if api_key:
+        try:
+            return get_user_context_from_api_key(api_key)
+        except HTTPException:
+            pass
+
+    # Try JWT Bearer token
+    if credentials:
+        try:
+            claims = _decode_and_verify(credentials.credentials)
+            tenant_id = get_tenant_id(claims) or "__admin__"
+            client_name = claims.get("email") or claims.get("sub", "unknown")
+            return UserContext(tenant_id=tenant_id, client_name=client_name)
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing or invalid API-Key or Authorization header",
     )

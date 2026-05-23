@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException
 from documentai_api.schemas.document_batches import DocumentBatches
 from documentai_api.schemas.document_builds import DocumentBuilds
 from documentai_api.schemas.document_metadata import DocumentMetadata
-from documentai_api.utils.auth import UserContext, get_user_context
+from documentai_api.utils.auth import UserContext, get_user_context_from_api_key
 from documentai_api.utils.ddb import get_batch
 from documentai_api.utils.document_build import get_build_metadata
 
@@ -24,7 +24,7 @@ def validate_document_tenant_access(
 
 
 def validate_batch_tenant_access(
-    batch_id: str, auth: Annotated[UserContext, Depends(get_user_context)]
+    batch_id: str, auth: Annotated[UserContext, Depends(get_user_context_from_api_key)]
 ) -> None:
     """Dependency: raise 404 if batch doesn't exist or tenant doesn't match."""
     batch = get_batch(batch_id)
@@ -33,7 +33,7 @@ def validate_batch_tenant_access(
 
 
 def validate_build_tenant_access(
-    build_id: str, auth: Annotated[UserContext, Depends(get_user_context)]
+    build_id: str, auth: Annotated[UserContext, Depends(get_user_context_from_api_key)]
 ) -> None:
     """Dependency: raise 404 if build doesn't exist or tenant doesn't match."""
     metadata = get_build_metadata(build_id)

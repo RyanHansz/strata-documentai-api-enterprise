@@ -42,7 +42,7 @@ from documentai_api.models.api_responses import (
 )
 from documentai_api.models.document_record import DocumentRecord
 from documentai_api.schemas.document_builds import DocumentBuilds
-from documentai_api.utils.auth import UserContext, get_user_context
+from documentai_api.utils.auth import UserContext, get_user_context_from_api_key
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
     insert_minimal_ddb_record,
@@ -69,7 +69,7 @@ from documentai_api.utils.uploads import (
 
 logger = get_logger(__name__)
 
-router = APIRouter(dependencies=[Depends(get_user_context)])
+router = APIRouter(dependencies=[Depends(get_user_context_from_api_key)])
 
 MAX_FILE_SIZE_BYTES = ConfigDefaults.BDA_MAX_DOCUMENT_FILE_SIZE_BYTES
 
@@ -131,7 +131,7 @@ async def add_page_to_build(
 )
 async def create_build(
     response: Response,
-    auth: Annotated[UserContext, Depends(get_user_context)],
+    auth: Annotated[UserContext, Depends(get_user_context_from_api_key)],
     category: Annotated[
         DocumentCategory | None, Form(description="Type of document being uploaded")
     ] = None,

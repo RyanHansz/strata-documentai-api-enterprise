@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
-from documentai_api.annotations import AuthUser, OutputFormat
+from documentai_api.annotations import AuthUserWithFallback, OutputFormat
 from documentai_api.config.constants import (
     ApiVisualizationTag,
     DictionaryBlueprintField,
@@ -21,13 +21,13 @@ from documentai_api.models.api_responses import (
     DictionarySchemaListResponse,
     DictionarySearchResponse,
 )
-from documentai_api.utils.auth import get_user_context
+from documentai_api.utils.auth import get_user_context_with_fallback
 from documentai_api.utils.response_builder import build_csv_response
 from documentai_api.utils.schemas import get_all_fields, get_all_schemas, get_document_schema
 
 logger = get_logger(__name__)
 
-router = APIRouter(dependencies=[Depends(get_user_context)])
+router = APIRouter(dependencies=[Depends(get_user_context_with_fallback)])
 
 _CSV_RESPONSES: dict[int | str, dict[str, Any]] = {
     200: {
@@ -45,7 +45,7 @@ _CSV_RESPONSES: dict[int | str, dict[str, Any]] = {
     tags=[ApiVisualizationTag.DICTIONARY_SCHEMAS],
 )
 async def list_schemas(
-    user: AuthUser,
+    user: AuthUserWithFallback,
 ) -> DictionarySchemaListResponse:
     """List all supported document types."""
     try:
@@ -67,7 +67,7 @@ async def list_schemas(
 )
 async def get_schema_detail(
     document_type: str,
-    user: AuthUser,
+    user: AuthUserWithFallback,
     output_format: OutputFormat = DictionaryFormatType.JSON,
 ) -> DictionarySchemaDetailResponse | Response:
     """Get field schema for a specific document type."""
@@ -101,7 +101,7 @@ async def get_schema_detail(
     tags=[ApiVisualizationTag.DICTIONARY_FIELDS],
 )
 async def get_all_schema_fields(
-    user: AuthUser,
+    user: AuthUserWithFallback,
     output_format: OutputFormat = DictionaryFormatType.JSON,
 ) -> DictionaryFieldsResponse | Response:
     """Get all fields across all document types."""
@@ -128,7 +128,7 @@ async def get_all_schema_fields(
     tags=[ApiVisualizationTag.DICTIONARY_FIELDS],
 )
 async def search_schema_fields(
-    user: AuthUser,
+    user: AuthUserWithFallback,
     q: str | None = None,
     field: DictionaryBlueprintField | None = None,
     output_format: OutputFormat = DictionaryFormatType.JSON,
@@ -164,7 +164,7 @@ async def search_schema_fields(
     tags=[ApiVisualizationTag.DICTIONARY_REFERENCE],
 )
 async def get_response_codes(
-    user: AuthUser,
+    user: AuthUserWithFallback,
     output_format: OutputFormat = DictionaryFormatType.JSON,
 ) -> DictionaryResponseCodesResponse | Response:
     """Get list of response codes and their meanings."""
@@ -190,7 +190,7 @@ async def get_response_codes(
     tags=[ApiVisualizationTag.DICTIONARY_REFERENCE],
 )
 async def get_document_categories(
-    user: AuthUser,
+    user: AuthUserWithFallback,
     output_format: OutputFormat = DictionaryFormatType.JSON,
 ) -> DictionaryDocumentCategoriesResponse | Response:
     """Get list of supported document categories."""

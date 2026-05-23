@@ -41,7 +41,7 @@ from documentai_api.models.api_responses import (
 )
 from documentai_api.models.document_record import DocumentRecord
 from documentai_api.schemas.document_metadata import DocumentMetadata
-from documentai_api.utils.auth import get_user_context
+from documentai_api.utils.auth import get_user_context_from_api_key
 from documentai_api.utils.ddb import (
     classify_as_ai_consent_declined,
     insert_minimal_ddb_record,
@@ -59,8 +59,8 @@ from documentai_api.utils.uploads import (
 logger = get_logger(__name__)
 
 # Router-level dep enforces auth on every route even if a handler forgets to inject `auth`.
-# FastAPI caches the call within a request, so the per-handler `Depends(get_user_context)` is free.
-router = APIRouter(dependencies=[Depends(get_user_context)])
+# FastAPI caches the call within a request, so the per-handler `Depends(get_user_context_from_api_key)` is free.
+router = APIRouter(dependencies=[Depends(get_user_context_from_api_key)])
 
 
 # =============================================================================
