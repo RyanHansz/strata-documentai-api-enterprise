@@ -48,7 +48,7 @@ from documentai_api.utils.ddb import (
 )
 from documentai_api.utils.jobs import JobStatus, get_job_status, poll_for_completion
 from documentai_api.utils.response_builder import build_v1_api_response
-from documentai_api.utils.tenant import validate_document_tenant_access
+from documentai_api.utils.tenant_access import validate_document_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
     dispatch_upload,

@@ -299,5 +299,5 @@ def test_build_v1_api_response_applies_extraction_rules(
     # extra_field filtered out, federal_tax missing
     assert "extraField" not in response["fields"]
     assert "ssn" in response["fields"] or "Ssn" in response["fields"]
-    assert response["missingRequiredFieldList"] == ["federalTax"]
+    assert response["missingRequiredFieldList"] == ["federal_tax"]
     assert response["responseCode"] == ResponseCodes.MISSING_FIELDS

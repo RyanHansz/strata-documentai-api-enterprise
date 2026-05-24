@@ -10,8 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from documentai_api.annotations import AdminClaims, IsoDateParam, PageLimit, verify_jwt_with_role
 from documentai_api.logging import get_logger
 from documentai_api.models.audit import AuditEventItem, AuditLogResponse
-from documentai_api.schemas.audit_event import GLOBAL_TENANT, AuditEventRecord
-from documentai_api.utils.aws_client_factory import AWSClientFactory
+from documentai_api.schemas.audit_event import GLOBAL_TENANT, AuditEventRecord, AuditEventsTable
 from documentai_api.utils.jwt_auth import tenant_scope
 
 logger = get_logger(__name__)
@@ -23,13 +22,7 @@ router = APIRouter(
 )
 
 
-def _get_table_name() -> str:
-    from documentai_api.config.env import get_aws_config
-
-    table_name = get_aws_config().audit_events_table_name
-    if not table_name:
-        raise ValueError("AUDIT_EVENTS_TABLE_NAME not configured")
-    return table_name
+_table = AuditEventsTable()
 
 
 def _encode_cursor(last_key: dict[str, Any]) -> str:
@@ -89,19 +82,18 @@ async def get_audit_log(
         tenant_id = scope
 
     try:
-        table = AWSClientFactory.get_ddb_table(_get_table_name())
         exclusive_start_key = _decode_cursor(cursor) if cursor else None
 
         if action and not tenant_id:
             # Super-admin querying by action across all tenants (GSI)
             records, last_key = _query_by_action(
-                table, action, start_date, end_date, limit, exclusive_start_key
+                action, start_date, end_date, limit, exclusive_start_key
             )
         else:
             # Query by tenant partition
             partition = tenant_id or GLOBAL_TENANT
             records, last_key = _query_by_tenant(
-                table, partition, action, start_date, end_date, limit, exclusive_start_key
+                partition, action, start_date, end_date, limit, exclusive_start_key
             )
     except HTTPException:
         raise
@@ -132,7 +124,6 @@ def _build_sk_condition(start_date: str | None, end_date: str | None) -> Conditi
 
 
 def _query_by_tenant(
-    table: Any,
     tenant_id: str,
     action: str | None,
     start_date: str | None,
@@ -145,22 +136,18 @@ def _query_by_tenant(
     if sk_condition:
         key_condition = key_condition & sk_condition
 
-    kwargs: dict[str, Any] = {
-        "KeyConditionExpression": key_condition,
-        "Limit": limit,
-        "ScanIndexForward": False,
-    }
-    if action:
-        kwargs["FilterExpression"] = Attr(AuditEventRecord.ACTION).eq(action)
-    if exclusive_start_key:
-        kwargs["ExclusiveStartKey"] = exclusive_start_key
+    filter_expr = Attr(AuditEventRecord.ACTION).eq(action) if action else None
 
-    response = table.query(**kwargs)
-    return response.get("Items", []), response.get("LastEvaluatedKey")
+    return _table.query(
+        key_condition=key_condition,
+        filter_expression=filter_expr,
+        limit=limit,
+        scan_forward=False,
+        start_key=exclusive_start_key,
+    )
 
 
 def _query_by_action(
-    table: Any,
     action: str,
     start_date: str | None,
     end_date: str | None,
@@ -172,14 +159,10 @@ def _query_by_action(
     if sk_condition:
         key_condition = key_condition & sk_condition
 
-    kwargs: dict[str, Any] = {
-        "IndexName": "action-timestamp-index",
-        "KeyConditionExpression": key_condition,
-        "Limit": limit,
-        "ScanIndexForward": False,
-    }
-    if exclusive_start_key:
-        kwargs["ExclusiveStartKey"] = exclusive_start_key
-
-    response = table.query(**kwargs)
-    return response.get("Items", []), response.get("LastEvaluatedKey")
+    return _table.query(
+        key_condition=key_condition,
+        index_name="action-timestamp-index",
+        limit=limit,
+        scan_forward=False,
+        start_key=exclusive_start_key,
+    )

@@ -56,7 +56,7 @@ from documentai_api.utils.ddb import (
     update_batch_status,
 )
 from documentai_api.utils.dto import ClassificationData
-from documentai_api.utils.tenant import validate_batch_tenant_access
+from documentai_api.utils.tenant_access import validate_batch_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
     generate_unique_filename,

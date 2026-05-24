@@ -41,8 +41,6 @@ class ConfigResponse(BaseApiResponse):
     supported_file_types: list[str]
 
 
-
-
 class BuildCreatedResponse(BaseApiResponse):
     build_id: str
     message: str

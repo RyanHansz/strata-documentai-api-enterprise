@@ -115,10 +115,10 @@ def test_apply_extraction_rules_filters_fields(extraction_rules_table):
         }
     )
 
-    fields = {"ssn": "123", "wages": "50000", "employerName": "Acme", "extraField": "ignored"}
+    fields = {"ssn": "123", "wages": "50000", "employer_name": "Acme", "extra_field": "ignored"}
     result = apply_extraction_rules("t1", "W2", fields)
 
-    assert result.fields == {"ssn": "123", "wages": "50000", "employerName": "Acme"}
+    assert result.fields == {"ssn": "123", "wages": "50000", "employer_name": "Acme"}
     assert result.missing_required_field_list == []
 
 
@@ -138,7 +138,7 @@ def test_apply_extraction_rules_missing_required(extraction_rules_table):
     result = apply_extraction_rules("t1", "W2", fields)
 
     assert result.fields == {"ssn": "123", "wages": "50000"}
-    assert result.missing_required_field_list == ["federalTax"]
+    assert result.missing_required_field_list == ["federal_tax"]
 
 
 def test_apply_extraction_rules_no_rules(extraction_rules_table):

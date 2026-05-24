@@ -78,7 +78,7 @@ def disable_auth():
         get_user_context_with_fallback,
         verify_api_key,
     )
-    from documentai_api.utils.tenant import (
+    from documentai_api.utils.tenant_access import (
         validate_batch_tenant_access,
         validate_build_tenant_access,
     )

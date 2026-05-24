@@ -60,7 +60,7 @@ from documentai_api.utils.document_build import (
 )
 from documentai_api.utils.pdf import merge_pages_to_pdf
 from documentai_api.utils.s3 import parse_s3_uri
-from documentai_api.utils.tenant import validate_build_tenant_access
+from documentai_api.utils.tenant_access import validate_build_tenant_access
 from documentai_api.utils.uploads import (
     ImageConversionError,
     upload_document_for_processing,

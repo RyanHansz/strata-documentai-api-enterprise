@@ -94,7 +94,10 @@ async def put_extraction_rule(
 
     effective_tenant = _resolve_tenant(auth.tenant_id, body.tenant_id)
     rule = upsert_rule(
-        effective_tenant, body.document_type, body.required_fields, body.optional_fields,
+        effective_tenant,
+        body.document_type,
+        body.required_fields,
+        body.optional_fields,
         blueprint_arn=body.blueprint_arn,
     )
     return ExtractionRuleItem(**rule)

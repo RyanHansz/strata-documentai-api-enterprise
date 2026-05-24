@@ -1,5 +1,7 @@
 """Schema for the audit-events DynamoDB table."""
 
+from documentai_api.utils.base_crud_table import BaseCrudTable
+
 GLOBAL_TENANT = "__global__"
 """Partition key for events not scoped to a specific tenant (e.g. tenant.create)."""
 
@@ -39,3 +41,10 @@ class AuditEventRecord:
     TARGET_ID = "targetId"
     METADATA = "metadata"
     TTL = "ttl"
+
+
+class AuditEventsTable(BaseCrudTable):
+    table_name_env = "audit_events_table_name"
+    pk_field = AuditEventRecord.TENANT_ID
+    sk_field = AuditEventRecord.TIMESTAMP_EVENT_ID
+    active_field = ""  # No active field

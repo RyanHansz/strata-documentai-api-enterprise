@@ -759,7 +759,7 @@ def test_tenant_access_enforced_on_all_build_routes(method, path, document_build
 
     from documentai_api.app import app
     from documentai_api.utils.auth import UserContext, get_user_context_from_api_key
-    from documentai_api.utils.tenant import validate_build_tenant_access
+    from documentai_api.utils.tenant_access import validate_build_tenant_access
 
     mock_context = UserContext(tenant_id="any-tenant", client_name="test-client")
     called = []
