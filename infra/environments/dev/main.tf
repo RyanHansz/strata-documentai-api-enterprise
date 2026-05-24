@@ -182,6 +182,13 @@ module "extraction_rules" {
   sort_key   = "documentType"
 }
 
+module "document_categories" {
+  source     = "../../modules/nosql"
+  table_name = "${local.service_name}-document-categories"
+  hash_key   = "tenantId"
+  sort_key   = "categoryName"
+}
+
 module "document_batches" {
   source        = "../../modules/nosql"
   table_name    = "${local.service_name}-document-batches"
@@ -417,6 +424,7 @@ locals {
     TENANTS_TABLE_NAME                                      = module.tenants.table_name
     AUDIT_EVENTS_TABLE_NAME                                  = module.audit_events.table_name
     EXTRACTION_RULES_TABLE_NAME                             = module.extraction_rules.table_name
+    DOCUMENT_CATEGORIES_TABLE_NAME                           = module.document_categories.table_name
     DOCUMENTAI_BATCH_TABLE_NAME                             = module.document_batches.table_name
     DOCUMENTAI_DOCUMENT_BUILD_TABLE_NAME                    = module.document_builds.table_name
     DOCUMENTAI_INPUT_LOCATION                               = "s3://${module.input_bucket.bucket_name}/input"
@@ -476,6 +484,8 @@ data "aws_iam_policy_document" "data_access" {
       "${module.tenants.table_arn}/index/*",
       "${module.extraction_rules.table_arn}",
       "${module.extraction_rules.table_arn}/index/*",
+      "${module.document_categories.table_arn}",
+      "${module.document_categories.table_arn}/index/*",
       "${module.document_batches.table_arn}",
       "${module.document_batches.table_arn}/index/*",
       "${module.document_builds.table_arn}",

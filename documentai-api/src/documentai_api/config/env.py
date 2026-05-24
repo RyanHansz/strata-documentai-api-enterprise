@@ -50,6 +50,7 @@ class EnvVars(StrEnum):
 
     # === Extraction rules ===
     EXTRACTION_RULES_TABLE_NAME = "EXTRACTION_RULES_TABLE_NAME"
+    DOCUMENT_CATEGORIES_TABLE_NAME = "DOCUMENT_CATEGORIES_TABLE_NAME"
 
     # === Metrics pipeline ===
     ATHENA_WORKGROUP_NAME = "ATHENA_WORKGROUP_NAME"
@@ -97,6 +98,7 @@ class AWSEnvConfig(PydanticBaseEnvConfig):
 
     # Extraction rules
     extraction_rules_table_name: str | None = None
+    document_categories_table_name: str | None = None
 
     # Metrics pipeline
     athena_workgroup_name: str | None = None

@@ -16,6 +16,7 @@ from documentai_api.app_audit_log import router as audit_log_router
 from documentai_api.app_batch import router as batch_router
 from documentai_api.app_build import router as build_router
 from documentai_api.app_dictionary import router as dictionary_router
+from documentai_api.app_document_categories import router as document_categories_router
 from documentai_api.app_documents import router as documents_router
 from documentai_api.app_extraction_rules import router as extraction_rules_router
 from documentai_api.app_presigned import router as presigned_router
@@ -51,6 +52,7 @@ app.include_router(admin_router)
 app.include_router(tenants_router)
 app.include_router(users_router)
 app.include_router(audit_log_router)
+app.include_router(document_categories_router)
 
 app.add_middleware(
     CORSMiddleware,

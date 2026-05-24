@@ -208,6 +208,16 @@
                                 <ul id="blueprint-list"></ul>
                             </div>
                         </div>
+
+                        <!-- Document Categories -->
+                        <div class="nav-section">
+                            <button class="nav-section-header" data-section="doc-categories">
+                                <span class="nav-arrow">▸</span> Document Categories
+                            </button>
+                            <div class="nav-section-body hidden" id="section-doc-categories">
+                                <a class="nav-item" data-view="doc-categories-manage">Manage Categories</a>
+                            </div>
+                        </div>
                     </nav>
 
                     <div class="sidebar-footer">
@@ -328,6 +338,33 @@
                             <tbody id="tenants-tbody"></tbody>
                         </table>
                         <p id="no-tenants" class="empty-state hidden">No tenants found.</p>
+                    </div>
+
+                    <!-- Document Categories View -->
+                    <div id="view-doc-categories-manage" class="content-view hidden">
+                        <div class="content-header">
+                            <h2>Document Categories</h2>
+                            <div class="content-actions">
+                                <select id="categories-tenant-select" class="tenant-select">
+                                    <option value="">— Select tenant —</option>
+                                </select>
+                                <button id="create-category-btn" class="btn-primary" disabled>+ Create Category</button>
+                                <button id="refresh-categories-btn" class="btn-secondary">Refresh</button>
+                            </div>
+                        </div>
+                        <table id="categories-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Display Name</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categories-tbody"></tbody>
+                        </table>
+                        <p id="no-categories" class="empty-state hidden">No categories found.</p>
                     </div>
 
                     <!-- Empty State -->
