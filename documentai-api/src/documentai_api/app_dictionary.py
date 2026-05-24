@@ -13,7 +13,7 @@ from documentai_api.config.constants import (
     DictionaryFormatType,
 )
 from documentai_api.logging import get_logger
-from documentai_api.models.api_responses import (
+from documentai_api.models.dictionary import (
     DictionaryDocumentCategoriesResponse,
     DictionaryFieldsResponse,
     DictionaryResponseCodesResponse,
@@ -90,7 +90,12 @@ async def get_schema_detail(
     if output_format == DictionaryFormatType.CSV:
         return build_csv_response(data)
 
-    return DictionarySchemaDetailResponse(document_type=document_type, fields=data)
+    return DictionarySchemaDetailResponse(
+        document_type=document_type,
+        fields=data,
+        blueprint_arn=schema.get("blueprintArn"),
+        category=schema.get("category"),
+    )
 
 
 @router.get(

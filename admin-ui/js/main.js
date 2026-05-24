@@ -112,6 +112,7 @@ BlueprintsView.init({
   fieldsList: document.getElementById("fields-list"),
   discardBtn: document.getElementById("discard-rules-btn"),
   saveBtn: document.getElementById("save-rules-btn"),
+  tenantSelect: document.getElementById("tenant-select"),
   onNavigate: showContentView,
 });
 

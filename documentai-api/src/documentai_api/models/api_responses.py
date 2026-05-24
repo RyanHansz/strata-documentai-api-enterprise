@@ -41,64 +41,6 @@ class ConfigResponse(BaseApiResponse):
     supported_file_types: list[str]
 
 
-class DictionaryFieldItem(BaseApiResponse):
-    document_type: str
-    name: str
-    type: str
-    description: str
-
-
-class DictionaryFieldsResponse(BaseApiResponse):
-    fields: list[DictionaryFieldItem]
-
-
-class DictionarySearchResponse(BaseApiResponse):
-    fields: list[DictionaryFieldItem]
-
-
-class DictionarySchemaListResponse(BaseApiResponse):
-    schemas: list[str]
-
-
-class DictionarySchemaFieldResponse(BaseApiResponse):
-    name: str
-    type: str
-    description: str
-
-
-class DictionarySchemaDetailResponse(BaseApiResponse):
-    document_type: str
-    fields: list[DictionarySchemaFieldResponse]
-
-
-class DictionaryResponseCodeItem(BaseApiResponse):
-    code: str
-    message: str
-
-
-class DictionaryResponseCodesResponse(BaseApiResponse):
-    response_codes: list[DictionaryResponseCodeItem]
-
-
-class DictionaryDocumentCategoriesResponse(BaseApiResponse):
-    document_categories: list[str]
-
-
-class ExtractionRuleItem(BaseApiResponse):
-    tenant_id: str
-    document_type: str
-    required_fields: list[str]
-    optional_fields: list[str]
-    created_at: str
-    updated_at: str
-
-
-class ExtractionRulesListResponse(BaseApiResponse):
-    rules: list[ExtractionRuleItem]
-
-
-class ExtractionRuleDeleteResponse(BaseApiResponse):
-    message: str
 
 
 class BuildCreatedResponse(BaseApiResponse):

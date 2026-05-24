@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from documentai_api.annotations import AdminClaims, SuperAdminClaims, verify_jwt_with_role
 from documentai_api.logging import get_logger
-from documentai_api.models.tenants import (
+from documentai_api.models.tenant import (
     CreateTenantRequest,
     DeleteTenantResponse,
     ListTenantsResponse,

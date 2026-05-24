@@ -105,8 +105,11 @@ form button[type="submit"]:not(.btn-primary):not(.btn-secondary):not(.btn-outlin
     background: #1a1a2e;
     color: #ccc;
     display: flex;
+    position: fixed;
     flex-direction: column;
     flex-shrink: 0;
+    height: 100%;
+    overflow: hidden;
 }
 
 .sidebar-header {
@@ -149,6 +152,7 @@ form button[type="submit"]:not(.btn-primary):not(.btn-secondary):not(.btn-outlin
 /* Nav Sections */
 .nav-section {
     margin-bottom: 0.25rem;
+    overflow-y: auto;
 }
 
 .nav-section-header {
@@ -259,6 +263,7 @@ form button[type="submit"]:not(.btn-primary):not(.btn-secondary):not(.btn-outlin
     overflow-y: auto;
     padding: 2rem;
     min-width: 0;
+    margin-left: 240px;
 }
 
 .content-view {
@@ -270,6 +275,8 @@ form button[type="submit"]:not(.btn-primary):not(.btn-secondary):not(.btn-outlin
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+    position: sticky;
+    top: 0px;
 }
 
 .content-header h2 {

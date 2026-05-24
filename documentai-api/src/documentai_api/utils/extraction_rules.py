@@ -41,6 +41,7 @@ def upsert_rule(
     document_type: str,
     required_fields: list[str],
     optional_fields: list[str],
+    blueprint_arn: str | None = None,
 ) -> dict[str, Any]:
     """Create or update an extraction rule atomically."""
     from documentai_api.utils.aws_client_factory import AWSClientFactory
@@ -48,18 +49,25 @@ def upsert_rule(
     table_name = _get_table_name()
     now = datetime.now(UTC).isoformat()
 
+    update_expr = (
+        "SET requiredFields = :rf, optionalFields = :of, updatedAt = :now, "
+        "createdAt = if_not_exists(createdAt, :now)"
+    )
+    expr_values: dict[str, Any] = {
+        ":rf": required_fields,
+        ":of": optional_fields,
+        ":now": now,
+    }
+
+    if blueprint_arn:
+        update_expr += ", blueprintArn = :arn"
+        expr_values[":arn"] = blueprint_arn
+
     ddb_table = AWSClientFactory.get_ddb_table(table_name)
     response = ddb_table.update_item(
         Key={"tenantId": tenant_id, "documentType": document_type},
-        UpdateExpression=(
-            "SET requiredFields = :rf, optionalFields = :of, updatedAt = :now, "
-            "createdAt = if_not_exists(createdAt, :now)"
-        ),
-        ExpressionAttributeValues={
-            ":rf": required_fields,
-            ":of": optional_fields,
-            ":now": now,
-        },
+        UpdateExpression=update_expr,
+        ExpressionAttributeValues=expr_values,
         ReturnValues="ALL_NEW",
     )
 

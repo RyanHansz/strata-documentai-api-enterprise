@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from documentai_api.annotations import AuthUserWithFallback
 from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
-from documentai_api.models.api_responses import (
+from documentai_api.models.extraction_rule import (
     ExtractionRuleDeleteResponse,
     ExtractionRuleItem,
     ExtractionRulesListResponse,
@@ -28,6 +28,31 @@ class ExtractionRuleRequest(BaseModel):
     optional_fields: list[str] = Field(
         default_factory=list, description="Fields that may be present"
     )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Target tenant. Required for super-admins; ignored for tenant-admins.",
+    )
+    blueprint_arn: str | None = Field(
+        default=None,
+        description="BDA blueprint ARN for stable reference across renames.",
+    )
+
+
+def _resolve_tenant(auth_tenant_id: str, body_tenant_id: str | None) -> str:
+    """Determine the effective tenant for the operation.
+
+    Tenant-admins (real tenant_id): always use their own, ignore body.
+    Super-admins (__admin__): must provide tenant_id in body.
+    API key users (real tenant_id): use their own.
+    """
+    if auth_tenant_id != "__admin__":
+        return auth_tenant_id
+    if not body_tenant_id:
+        raise HTTPException(
+            status_code=400,
+            detail="tenant_id is required for super-admin operations.",
+        )
+    return body_tenant_id
 
 
 @router.get(
@@ -39,11 +64,13 @@ class ExtractionRuleRequest(BaseModel):
 async def get_extraction_rules(
     auth: AuthUserWithFallback,
     document_type: str | None = None,
+    tenant_id: str | None = None,
 ) -> Any:
-    """Get extraction rules for the authenticated tenant."""
+    """Get extraction rules for a tenant."""
     from documentai_api.utils.extraction_rules import get_rules
 
-    rules = get_rules(auth.tenant_id, document_type)
+    effective_tenant = _resolve_tenant(auth.tenant_id, tenant_id)
+    rules = get_rules(effective_tenant, document_type)
 
     if not rules:
         if document_type:
@@ -62,11 +89,13 @@ async def put_extraction_rule(
     auth: AuthUserWithFallback,
     body: ExtractionRuleRequest,
 ) -> Any:
-    """Create or update an extraction rule for the authenticated tenant."""
+    """Create or update an extraction rule."""
     from documentai_api.utils.extraction_rules import upsert_rule
 
+    effective_tenant = _resolve_tenant(auth.tenant_id, body.tenant_id)
     rule = upsert_rule(
-        auth.tenant_id, body.document_type, body.required_fields, body.optional_fields
+        effective_tenant, body.document_type, body.required_fields, body.optional_fields,
+        blueprint_arn=body.blueprint_arn,
     )
     return ExtractionRuleItem(**rule)
 
@@ -80,11 +109,13 @@ async def put_extraction_rule(
 async def delete_extraction_rule(
     auth: AuthUserWithFallback,
     document_type: str,
+    tenant_id: str | None = None,
 ) -> Any:
-    """Delete an extraction rule for the authenticated tenant."""
+    """Delete an extraction rule."""
     from documentai_api.utils.extraction_rules import delete_rule
 
-    deleted = delete_rule(auth.tenant_id, document_type)
+    effective_tenant = _resolve_tenant(auth.tenant_id, tenant_id)
+    deleted = delete_rule(effective_tenant, document_type)
     if not deleted:
         raise HTTPException(status_code=404, detail="Rule not found")
     return ExtractionRuleDeleteResponse(message="Rule deleted")

@@ -58,6 +58,7 @@ def _fetch_schemas_from_bda() -> dict[str, Any]:
                     "documentType": document_type,
                     "fields": fields,
                     "category": category,
+                    "blueprintArn": blueprint_arn,
                 }
 
         except Exception as e:
