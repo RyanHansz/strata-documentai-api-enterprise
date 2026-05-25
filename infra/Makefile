@@ -18,6 +18,14 @@ TF_DIR := environments/$(ENVIRONMENT)
 STATE_BUCKET ?= $(shell echo "docai-tfstate-$$(aws sts get-caller-identity $(if $(AWS_PROFILE),--profile $(AWS_PROFILE)) --query Account --output text)-$(ENVIRONMENT)")
 AWS_ARGS := $(if $(AWS_PROFILE),--profile $(AWS_PROFILE))
 
+define WRITE_CONFIG
+	@API=$$(terraform -chdir="$(TF_DIR)" output -raw api_endpoint) && \
+	POOL=$$(terraform -chdir="$(TF_DIR)" output -raw cognito_user_pool_id) && \
+	CLIENT=$$(terraform -chdir="$(TF_DIR)" output -raw cognito_client_id) && \
+	printf '{\n  "api_endpoint": {"value": "%s"},\n  "cognito_user_pool_id": {"value": "%s"},\n  "cognito_client_id": {"value": "%s"}\n}\n' \
+		"$$API" "$$POOL" "$$CLIENT" > ../admin-ui/config.json
+endef
+
 infra-bootstrap: ## Create S3 state bucket for $ENVIRONMENT
 	@echo "Creating state bucket: $(STATE_BUCKET)"
 	aws s3api create-bucket --bucket $(STATE_BUCKET) --region us-east-1 $(AWS_ARGS)
@@ -39,8 +47,8 @@ infra-plan: ## Plan infrastructure changes for $ENVIRONMENT
 
 infra-apply: ## Apply infrastructure changes for $ENVIRONMENT
 	@IMAGE_TAG=$${IMAGE_TAG:-$$(git -C .. rev-parse --short HEAD)} && \
-	terraform -chdir="$(TF_DIR)" apply -var="image_tag=$$IMAGE_TAG" && \
-	terraform -chdir="$(TF_DIR)" output -json > ../admin-ui/config.json
+	terraform -chdir="$(TF_DIR)" apply -var="image_tag=$$IMAGE_TAG"
+	$(WRITE_CONFIG)
 
 infra-deploy: ## Build, push image, and deploy for $ENVIRONMENT
 	@echo "Deploying to $(ENVIRONMENT)..."
@@ -56,8 +64,8 @@ infra-deploy: ## Build, push image, and deploy for $ENVIRONMENT
 	docker build --platform linux/amd64 -f ../documentai-api/Dockerfile.lambda -t $$ECR_URL:$$IMAGE_TAG ../documentai-api && \
 	docker push $$ECR_URL:$$IMAGE_TAG && \
 	terraform -chdir="$(TF_DIR)" apply -var="image_tag=$$IMAGE_TAG" -auto-approve && \
-	terraform -chdir="$(TF_DIR)" output -json > ../admin-ui/config.json && \
 	echo "Deploy complete: $$IMAGE_TAG → $(ENVIRONMENT)"
+	$(WRITE_CONFIG)
 
 infra-destroy: ## Destroy infrastructure for $ENVIRONMENT
 	terraform -chdir="$(TF_DIR)" destroy

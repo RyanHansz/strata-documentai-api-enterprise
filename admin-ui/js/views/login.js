@@ -1,8 +1,10 @@
 import * as Auth from "../services/auth.js";
 import * as Session from "../utils/session.js";
+import QRCode from "qrcode";
 
 let _onLogin = null;
 let _pendingEmail = null;
+let _mfaSession = null;
 
 export function init({ onLogin }) {
   _onLogin = onLogin;
@@ -21,6 +23,13 @@ export function init({ onLogin }) {
 
   // Confirm form
   document.getElementById("confirm-form").addEventListener("submit", handleConfirm);
+
+  // MFA form
+  document.getElementById("mfa-form").addEventListener("submit", handleMfaVerify);
+
+  // MFA Setup form
+  document.getElementById("mfa-setup-form").addEventListener("submit", handleMfaSetupVerify);
+  document.getElementById("mfa-setup-cancel").addEventListener("click", () => reset());
 
   // Toggle between sign in / sign up
   document.getElementById("show-sign-up").addEventListener("click", (e) => {
@@ -59,15 +68,18 @@ export function reset() {
   document.getElementById("sign-in-card").classList.remove("hidden");
   document.getElementById("sign-up-card").classList.add("hidden");
   document.getElementById("confirm-card").classList.add("hidden");
-  ["sign-in-form", "sign-up-form", "confirm-form"].forEach((id) => {
+  document.getElementById("mfa-card").classList.add("hidden");
+  document.getElementById("mfa-setup-card").classList.add("hidden");
+  ["sign-in-form", "sign-up-form", "confirm-form", "mfa-form", "mfa-setup-form"].forEach((id) => {
     const form = document.getElementById(id);
     if (form) form.reset();
   });
-  ["sign-in-error", "sign-up-error", "confirm-error"].forEach((id) => {
+  ["sign-in-error", "sign-up-error", "confirm-error", "mfa-error", "mfa-setup-error"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
   _pendingEmail = null;
+  _mfaSession = null;
 }
 
 async function handleSignIn(e) {
@@ -79,8 +91,23 @@ async function handleSignIn(e) {
   const password = document.getElementById("sign-in-password").value;
 
   try {
-    const tokens = await Auth.signIn(email, password);
-    Session.save({ ...tokens, email });
+    const result = await Auth.signIn(email, password);
+
+    if (result.challenge === "SOFTWARE_TOKEN_MFA") {
+      _pendingEmail = email;
+      _mfaSession = result.session;
+      showMfaCard();
+      return;
+    }
+
+    if (result.challenge === "MFA_SETUP") {
+      _pendingEmail = email;
+      _mfaSession = result.session;
+      await showMfaSetupCard(result.session);
+      return;
+    }
+
+    Session.save({ ...result, email });
     if (_onLogin) _onLogin();
   } catch (err) {
     if (err.code === "NotAuthorizedException" || err.code === "UserNotFoundException") {
@@ -151,13 +178,105 @@ async function handleConfirm(e) {
 
     // Auto sign in after confirmation
     const password = document.getElementById("sign-up-password").value;
-    const tokens = await Auth.signIn(_pendingEmail, password);
+    const result = await Auth.signIn(_pendingEmail, password);
+
+    if (result.challenge === "MFA_SETUP") {
+      _mfaSession = result.session;
+      await showMfaSetupCard(result.session);
+      return;
+    }
+    if (result.challenge === "SOFTWARE_TOKEN_MFA") {
+      _mfaSession = result.session;
+      showMfaCard();
+      return;
+    }
+
+    Session.save({ ...result, email: _pendingEmail });
+    if (_onLogin) _onLogin();
+  } catch (err) {
+    error.textContent = "That code didn't work. Please check your email and try again.";
+    error.classList.remove("hidden");
+  }
+}
+
+function showMfaCard() {
+  document.getElementById("sign-in-card").classList.add("hidden");
+  document.getElementById("sign-up-card").classList.add("hidden");
+  document.getElementById("confirm-card").classList.add("hidden");
+  document.getElementById("mfa-card").classList.remove("hidden");
+  document.getElementById("mfa-setup-card").classList.add("hidden");
+}
+
+async function showMfaSetupCard(session) {
+  document.getElementById("sign-in-card").classList.add("hidden");
+  document.getElementById("sign-up-card").classList.add("hidden");
+  document.getElementById("confirm-card").classList.add("hidden");
+  document.getElementById("mfa-card").classList.add("hidden");
+  document.getElementById("mfa-setup-card").classList.remove("hidden");
+
+  try {
+    const resp = await Auth.associateSoftwareToken(session);
+    _mfaSession = resp.Session;
+    const secret = resp.SecretCode;
+    const otpUri = `otpauth://totp/DocumentAI:${_pendingEmail}?secret=${secret}&issuer=DocumentAI`;
+    document.getElementById("mfa-secret-code").textContent = secret;
+    const canvas = document.getElementById("mfa-qr-canvas");
+    await QRCode.toCanvas(canvas, otpUri, { width: 200, margin: 2 });
+  } catch (err) {
+    const error = document.getElementById("mfa-setup-error");
+    error.textContent = err.message;
+    error.classList.remove("hidden");
+  }
+}
+
+async function handleMfaVerify(e) {
+  e.preventDefault();
+  const error = document.getElementById("mfa-error");
+  error.classList.add("hidden");
+
+  const code = document.getElementById("mfa-code").value.trim();
+
+  try {
+    const tokens = await Auth.respondToMfaChallenge(_mfaSession, code, _pendingEmail);
     Session.save({ ...tokens, email: _pendingEmail });
     if (_onLogin) _onLogin();
   } catch (err) {
-    // Generic message so the confirm step doesn't reveal whether the
-    // account exists, is already confirmed, or the code is simply wrong.
-    error.textContent = "That code didn't work. Please check your email and try again.";
+    if (err.code === "NotAuthorizedException") {
+      error.textContent = "Session expired. Please sign in again.";
+      error.classList.remove("hidden");
+      setTimeout(() => { reset(); document.getElementById("sign-in-card").classList.remove("hidden"); }, 2000);
+      return;
+    } else if (err.code === "CodeMismatchException") {
+      error.textContent = "Invalid code. Please try again.";
+    } else {
+      error.textContent = err.message;
+    }
+    error.classList.remove("hidden");
+  }
+}
+
+async function handleMfaSetupVerify(e) {
+  e.preventDefault();
+  const error = document.getElementById("mfa-setup-error");
+  error.classList.add("hidden");
+
+  const code = document.getElementById("mfa-setup-code").value.trim();
+
+  try {
+    const tokens = await Auth.verifySoftwareToken(_mfaSession, code, _pendingEmail);
+    Session.save({ ...tokens, email: _pendingEmail });
+    if (_onLogin) _onLogin();
+  } catch (err) {
+    if (err.code === "NotAuthorizedException") {
+      error.textContent = "Session expired. Please sign in again.";
+      error.classList.remove("hidden");
+      setTimeout(() => { reset(); document.getElementById("sign-in-card").classList.remove("hidden"); }, 2000);
+      return;
+    } else if (err.code === "CodeMismatchException") {
+      error.textContent = "Invalid code. Please try again.";
+    } else {
+      error.textContent = err.message;
+    }
     error.classList.remove("hidden");
   }
 }

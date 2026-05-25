@@ -38,4 +38,16 @@ output "cognito_client_id" {
   value = module.identity_provider.client_id
 }
 
+output "admin_ui_bucket" {
+  value = module.admin_ui.bucket_name
+}
+
+output "admin_ui_distribution_id" {
+  value = module.admin_ui.distribution_id
+}
+
+output "admin_ui_url" {
+  value = module.admin_ui.url
+}
+
 

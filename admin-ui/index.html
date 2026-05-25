@@ -84,6 +84,38 @@
                             <p id="confirm-error" class="error hidden"></p>
                         </form>
                     </div>
+
+                    <!-- MFA Code Entry -->
+                    <div id="mfa-card" class="login-form-container hidden">
+                        <h1>Two-factor authentication</h1>
+                        <p class="form-intro">Enter the 6-digit code from your authenticator app.</p>
+                        <form id="mfa-form" novalidate>
+                            <label for="mfa-code">Authentication code <abbr title="required" class="req">*</abbr></label>
+                            <input type="text" id="mfa-code" placeholder="123456" required pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code">
+
+                            <button type="submit" class="btn-primary btn-block">Verify</button>
+                            <p id="mfa-error" class="error hidden"></p>
+                        </form>
+                    </div>
+
+                    <!-- MFA Setup (first time) -->
+                    <div id="mfa-setup-card" class="login-form-container hidden">
+                        <h1>Set up two-factor authentication</h1>
+                        <p class="form-intro">Scan this code with your authenticator app (Google Authenticator, 1Password, etc.).</p>
+                        <div class="mfa-setup-secret">
+                            <canvas id="mfa-qr-canvas"></canvas>
+                            <p>Or enter this key manually:</p>
+                            <code id="mfa-secret-code"></code>
+                        </div>
+                        <form id="mfa-setup-form" novalidate>
+                            <label for="mfa-setup-code">Verification code <abbr title="required" class="req">*</abbr></label>
+                            <input type="text" id="mfa-setup-code" placeholder="123456" required pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code">
+
+                            <button type="submit" class="btn-primary btn-block">Verify &amp; activate</button>
+                            <button type="button" id="mfa-setup-cancel" class="btn-secondary btn-block">Cancel</button>
+                            <p id="mfa-setup-error" class="error hidden"></p>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Right Panel: Marketing + secondary SSO -->

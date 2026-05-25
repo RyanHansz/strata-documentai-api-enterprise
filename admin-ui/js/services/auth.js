@@ -60,12 +60,72 @@ export async function signIn(email, password) {
     },
   });
 
+  // MFA challenge — return challenge info for the caller to handle
+  if (result.ChallengeName) {
+    return {
+      challenge: result.ChallengeName,
+      session: result.Session,
+    };
+  }
+
   return {
     accessToken: result.AuthenticationResult.AccessToken,
     idToken: result.AuthenticationResult.IdToken,
     refreshToken: result.AuthenticationResult.RefreshToken,
     expiresIn: result.AuthenticationResult.ExpiresIn,
   };
+}
+
+export async function respondToMfaChallenge(session, code, email) {
+  const result = await cognitoFetch("RespondToAuthChallenge", {
+    ClientId: _clientId,
+    ChallengeName: "SOFTWARE_TOKEN_MFA",
+    Session: session,
+    ChallengeResponses: {
+      USERNAME: email,
+      SOFTWARE_TOKEN_MFA_CODE: code,
+    },
+  });
+
+  return {
+    accessToken: result.AuthenticationResult.AccessToken,
+    idToken: result.AuthenticationResult.IdToken,
+    refreshToken: result.AuthenticationResult.RefreshToken,
+    expiresIn: result.AuthenticationResult.ExpiresIn,
+  };
+}
+
+export async function associateSoftwareToken(session) {
+  return cognitoFetch("AssociateSoftwareToken", {
+    Session: session,
+  });
+}
+
+export async function verifySoftwareToken(session, code, email) {
+  const result = await cognitoFetch("VerifySoftwareToken", {
+    Session: session,
+    UserCode: code,
+    FriendlyDeviceName: "Authenticator",
+  });
+
+  // After setup verification, respond to the MFA_SETUP challenge to complete auth
+  if (result.Session) {
+    const authResult = await cognitoFetch("RespondToAuthChallenge", {
+      ClientId: _clientId,
+      ChallengeName: "MFA_SETUP",
+      Session: result.Session,
+      ChallengeResponses: {
+        USERNAME: email,
+      },
+    });
+    return {
+      accessToken: authResult.AuthenticationResult.AccessToken,
+      idToken: authResult.AuthenticationResult.IdToken,
+      refreshToken: authResult.AuthenticationResult.RefreshToken,
+      expiresIn: authResult.AuthenticationResult.ExpiresIn,
+    };
+  }
+  return result;
 }
 
 export async function refreshSession(refreshToken) {

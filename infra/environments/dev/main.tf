@@ -287,6 +287,11 @@ module "config" {
 
 # --- Identity Provider (Cognito) ---
 
+module "admin_ui" {
+  source = "../../modules/static-site"
+  name   = "${local.service_name}-admin-ui"
+}
+
 module "identity_provider" {
   source = "../../modules/identity-provider"
   name   = "${local.service_name}-console"
