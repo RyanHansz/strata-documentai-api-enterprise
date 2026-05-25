@@ -108,6 +108,14 @@ resource "aws_lambda_function" "this" {
 resource "aws_apigatewayv2_api" "this" {
   name          = var.function_name
   protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allow_headers = ["Content-Type", "Authorization", "API-Key", "X-Trace-ID"]
+    expose_headers = ["X-Trace-ID"]
+    max_age       = 3600
+  }
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -140,6 +148,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
   integration_uri        = aws_lambda_function.this.invoke_arn
   integration_method     = "POST"
   payload_format_version = "2.0"
+  timeout_milliseconds   = 30000
 }
 
 resource "aws_apigatewayv2_route" "default" {

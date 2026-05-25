@@ -543,6 +543,7 @@ data "aws_iam_policy_document" "bedrock_all" {
     actions = [
       "bedrock:InvokeDataAutomationAsync",
       "bedrock:GetDataAutomationProject",
+      "bedrock:GetDataAutomationStatus",
       "bedrock:GetBlueprint",
       "bedrock:StartDataAutomationJob",
       "bedrock:GetDataAutomationJob",
@@ -550,6 +551,7 @@ data "aws_iam_policy_document" "bedrock_all" {
     ]
     resources = [
       "arn:aws:bedrock:*:${local.account_id}:data-automation-project/*",
+      "arn:aws:bedrock:*:${local.account_id}:data-automation-invocation/*",
       "arn:aws:bedrock:*:*:blueprint/*",
       "arn:aws:bedrock:*:*:data-automation-profile/*",
     ]

@@ -14,7 +14,7 @@ from documentai_api.models.document_category import (
 )
 from documentai_api.schemas.document_category import DocumentCategoryRecord
 from documentai_api.utils import document_categories as categories_util
-from documentai_api.utils.jwt_auth import tenant_scope
+from documentai_api.utils.jwt_auth import resolve_tenant, tenant_scope
 
 logger = get_logger(__name__)
 
@@ -26,23 +26,22 @@ router = APIRouter(
 
 
 def _get_effective_tenant(claims: dict[str, Any], tenant_id: str | None = None) -> str:
-    """Resolve the tenant for the operation. Tenant-admins use their own; super-admins must specify."""
+    """Resolve tenant — required for all category operations."""
     scope = tenant_scope(claims)
     if scope is not None:
-        # Tenant-admin — locked to their own tenant
         if tenant_id and tenant_id != scope:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this tenant.",
             )
         return scope
-    # Super-admin — must specify tenant
-    if not tenant_id:
+    effective = resolve_tenant(claims, tenant_id)
+    if not effective:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="tenant_id is required for super-admin operations.",
         )
-    return tenant_id
+    return effective
 
 
 def _to_item(record: dict[str, Any]) -> DocumentCategoryItem:

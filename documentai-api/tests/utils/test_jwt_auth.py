@@ -42,7 +42,7 @@ def rsa_keys():
 @pytest.fixture
 def valid_payload():
     return {
-        "sub": "user-123",
+        "sub": "test-user",
         "email": "test@example.com",
         "token_use": "access",
         "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_TestPool",
@@ -68,7 +68,7 @@ class TestDecodeAndVerify:
             mock_client.return_value.get_signing_key_from_jwt.return_value = mock_jwk
             result = _decode_and_verify(token)
 
-        assert result["sub"] == "user-123"
+        assert result["sub"] == "test-user"
         assert result["email"] == "test@example.com"
 
     def test_expired_token(self, rsa_keys, valid_payload, monkeypatch):

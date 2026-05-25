@@ -198,12 +198,18 @@ async def get_document_categories(
     user: AuthUserWithFallback,
     output_format: OutputFormat = DictionaryFormatType.JSON,
 ) -> DictionaryDocumentCategoriesResponse | Response:
-    """Get list of supported document categories."""
-    from documentai_api.config.constants import DOCUMENT_CATEGORIES
+    """Get list of supported document categories (derived from BDA project config)."""
+    import json
+    import os
 
-    data = [{"category": c} for c in DOCUMENT_CATEGORIES]
+    project_arns_json = os.environ.get("BDA_PROJECT_ARNS")
+    if not project_arns_json:
+        raise HTTPException(status_code=503, detail="BDA_PROJECT_ARNS not configured")
+
+    categories = sorted(json.loads(project_arns_json).keys())
+    data = [{"category": c} for c in categories]
 
     if output_format == DictionaryFormatType.CSV:
         return build_csv_response(data)
 
-    return DictionaryDocumentCategoriesResponse(document_categories=DOCUMENT_CATEGORIES)
+    return DictionaryDocumentCategoriesResponse(document_categories=categories)

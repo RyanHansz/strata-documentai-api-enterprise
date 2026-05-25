@@ -26,7 +26,7 @@ TENANT_ADMIN = "tenant-admin"
 
 def _make_claims(*, groups: list[str] | None = None, tenant_id: str | None = None):
     claims = {
-        "sub": "user-123",
+        "sub": "test-user",
         "email": "test@example.com",
         "token_use": "access",
         "cognito:groups": groups or [],

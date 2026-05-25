@@ -1,5 +1,6 @@
 import * as Helpers from "../utils/helpers.js";
 import * as TenantsService from "../services/tenants.js";
+import * as TenantContext from "../utils/tenant-context.js";
 
 let _tbody, _noTenants, _refreshBtn, _showInactiveToggle, _createBtn;
 let _modal, _form, _modalTitle, _idInput, _nameInput, _contactInput, _cancelBtn, _formError;
@@ -125,6 +126,7 @@ async function handleSubmit(e) {
     _modal.classList.add("hidden");
     _editingId = null;
     await load();
+    await TenantContext.load();
   } catch (err) {
     _formError.textContent = err.message;
     _formError.classList.remove("hidden");

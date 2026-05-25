@@ -1,5 +1,6 @@
 import * as Helpers from "../utils/helpers.js";
 import * as KeysService from "../services/keys.js";
+import * as TenantContext from "../utils/tenant-context.js";
 import { DEMO_KEYS } from "../demo/keys.js";
 
 let _tbody, _noKeys, _createKeyBtn, _isDemo = false;
@@ -27,12 +28,8 @@ export function init({ tbody, noKeys, createKeyBtn, createModal, createForm, can
   _createKeyBtn.addEventListener("click", openCreateModal);
   _cancelCreate.addEventListener("click", () => { _createModal.classList.add("hidden"); });
   _createForm.addEventListener("submit", handleCreate);
-  document.getElementById("toggle-advanced").addEventListener("click", () => {
-    const fields = document.getElementById("advanced-fields");
-    const toggle = document.getElementById("toggle-advanced");
-    const isHidden = fields.classList.toggle("hidden");
-    toggle.textContent = isHidden ? "Show advanced options" : "Hide advanced options";
-  });
+
+  TenantContext.onChange(() => load());
   _copyKeyBtn.addEventListener("click", copyKey);
   _closeCreated.addEventListener("click", () => { _keyCreatedModal.classList.add("hidden"); });
   _refreshKeysBtn.addEventListener("click", () => { _isDemo ? render(DEMO_KEYS) : load(); });
@@ -79,24 +76,39 @@ export function setDemo(val) { _isDemo = val; }
 
 function openCreateModal() {
   _createModal.classList.remove("hidden");
+  const tenantSelect = document.getElementById("key-tenant");
+  // Populate tenant dropdown from global context
+  if (tenantSelect.options.length <= 1) {
+    import("../utils/tenant-context.js").then(async (TenantContext) => {
+      await TenantContext.load();
+    });
+  }
+  // Sync options from global selector
+  const globalSelect = document.getElementById("global-tenant-select");
+  tenantSelect.innerHTML = '<option value="">\u2014 Select tenant \u2014</option>';
+  for (const opt of globalSelect.options) {
+    if (opt.value) {
+      const newOpt = document.createElement("option");
+      newOpt.value = opt.value;
+      newOpt.textContent = opt.textContent;
+      tenantSelect.appendChild(newOpt);
+    }
+  }
   document.getElementById("client-name").value = "";
   document.getElementById("client-environment").value = "dev";
-  document.getElementById("client-expires-at").value = "";
   document.getElementById("client-email").value = "";
-  document.getElementById("advanced-fields").classList.add("hidden");
-  document.getElementById("toggle-advanced").textContent = "Show advanced options";
 }
 
 async function handleCreate(e) {
   e.preventDefault();
+  const tenantId = document.getElementById("key-tenant").value.trim();
   const clientName = document.getElementById("client-name").value.trim();
   const environment = document.getElementById("client-environment").value.trim() || "dev";
-  const expiresAt = document.getElementById("client-expires-at").value.trim() || undefined;
   const emailAddress = document.getElementById("client-email").value.trim() || undefined;
   try {
     const result = _isDemo
       ? { api_key: `docai_${Math.random().toString(36).slice(2, 18)}` }
-      : await KeysService.create(clientName, environment, expiresAt, emailAddress);
+      : await KeysService.create(clientName, environment, undefined, emailAddress, tenantId);
     _createModal.classList.add("hidden");
     _newKeyValue.textContent = result.apiKey || "—";
     _keyCreatedModal.classList.remove("hidden");
@@ -133,7 +145,9 @@ export function render(keys) {
       ? `<button class="btn-danger btn-sm">Revoke</button>`
       : `<span class="badge badge-revoked">Revoked</span>`;
     tr.innerHTML = `
+      <td>${Helpers.esc(key.tenantId || "—")}</td>
       <td>${Helpers.esc(key.clientName || "—")}</td>
+      <td>${Helpers.esc(key.emailAddress || "—")}</td>
       <td>${Helpers.esc(key.environment || "—")}</td>
       <td><code>${key.keyPrefix ? Helpers.esc(key.keyPrefix) + "…" : "—"}</code></td>
       <td>${Helpers.formatDate(key.createdAt)}</td>
@@ -153,7 +167,8 @@ export function render(keys) {
 export async function load() {
   try {
     const includeInactive = _showInactiveToggle?.checked || false;
-    const data = await KeysService.list({ includeInactive });
+    const tenantId = TenantContext.getTenantId();
+    const data = await KeysService.list({ includeInactive, tenantId });
     render(data.keys || []);
   } catch (e) {
     _tbody.innerHTML = "";

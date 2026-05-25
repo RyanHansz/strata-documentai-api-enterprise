@@ -8,6 +8,11 @@ from documentai_api.app import app
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _set_bda_env(bda_project_arns):
+    pass
+
+
 MOCK_SCHEMAS = {
     "W2": {
         "fields": [

@@ -163,49 +163,57 @@
                             <button class="role-btn active" data-role="admin">Admin</button>
                             <button class="role-btn" data-role="tenant">Tenant</button>
                         </div>
+                        <select id="global-tenant-select" class="global-tenant-select">
+                            <option value="">All Tenants</option>
+                        </select>
                     </div>
 
                     <nav class="sidebar-nav">
                         <!-- API Keys -->
                         <div class="nav-section">
-                            <button class="nav-section-header active" data-section="keys">
-                                <span class="nav-arrow">▾</span> API Keys
+                            <button class="nav-section-header" data-section="keys">
+                                <span class="nav-arrow">▸</span> API Keys
                             </button>
-                            <div class="nav-section-body" id="section-keys">
+                            <div class="nav-section-body hidden" id="section-keys">
                                 <a class="nav-item" data-view="keys-manage">Manage Keys</a>
                             </div>
                         </div>
 
                         <!-- Users (super-admin only) -->
                         <div class="nav-section hidden" id="nav-section-users">
-                            <button class="nav-section-header active" data-section="users">
-                                <span class="nav-arrow">▾</span> Users
+                            <button class="nav-section-header" data-section="users">
+                                <span class="nav-arrow">▸</span> Users
                             </button>
-                            <div class="nav-section-body" id="section-users">
+                            <div class="nav-section-body hidden" id="section-users">
                                 <a class="nav-item" data-view="users-manage">Manage Users</a>
                             </div>
                         </div>
 
                         <!-- Tenants (super-admin only) -->
                         <div class="nav-section hidden" id="nav-section-tenants">
-                            <button class="nav-section-header active" data-section="tenants">
-                                <span class="nav-arrow">▾</span> Tenants
+                            <button class="nav-section-header" data-section="tenants">
+                                <span class="nav-arrow">▸</span> Tenants
                             </button>
-                            <div class="nav-section-body" id="section-tenants">
+                            <div class="nav-section-body hidden" id="section-tenants">
                                 <a class="nav-item" data-view="tenants-manage">Manage Tenants</a>
                             </div>
                         </div>
 
-                        <!-- Blueprints -->
+                        <!-- Document Types -->
                         <div class="nav-section">
-                            <button class="nav-section-header active" data-section="blueprints">
-                                <span class="nav-arrow">▾</span> Blueprints
+                            <button class="nav-section-header" data-section="blueprints">
+                                <span class="nav-arrow">▸</span> Document Types
                             </button>
-                            <div class="nav-section-body" id="section-blueprints">
-                                <div class="nav-search">
-                                    <input type="text" id="field-search" placeholder="Search fields...">
+                            <div class="nav-section-body hidden" id="section-blueprints">
+                                <a class="nav-item nav-item-collapsible" id="manage-documents-toggle">
+                                    Manage Documents <span class="nav-arrow">☰</span>
+                                </a>
+                                <div class="nav-subsection hidden" id="subsection-documents">
+                                    <div class="nav-search">
+                                        <input type="text" id="field-search" placeholder="Search fields...">
+                                    </div>
+                                    <ul id="blueprint-list"></ul>
                                 </div>
-                                <ul id="blueprint-list"></ul>
                             </div>
                         </div>
 
@@ -216,6 +224,16 @@
                             </button>
                             <div class="nav-section-body hidden" id="section-doc-categories">
                                 <a class="nav-item" data-view="doc-categories-manage">Manage Categories</a>
+                            </div>
+                        </div>
+
+                        <!-- Test Documents -->
+                        <div class="nav-section">
+                            <button class="nav-section-header" data-section="test-docs">
+                                <span class="nav-arrow">▸</span> Test Documents
+                            </button>
+                            <div class="nav-section-body hidden" id="section-test-docs">
+                                <a class="nav-item" data-view="test-documents">Run Test</a>
                             </div>
                         </div>
                     </nav>
@@ -243,7 +261,9 @@
                         <table id="keys-table">
                             <thead>
                                 <tr>
+                                    <th>Tenant</th>
                                     <th>Client</th>
+                                    <th>Email</th>
                                     <th>Environment</th>
                                     <th>Key (prefix)</th>
                                     <th>Created</th>
@@ -264,6 +284,7 @@
                                 <select id="tenant-select" class="tenant-select">
                                     <option value="">— Select tenant —</option>
                                 </select>
+                                <button id="test-blueprint-btn" class="btn-secondary" disabled title="Select a tenant and blueprint first">Test</button>
                                 <button id="discard-rules-btn" class="btn-secondary hidden">Discard</button>
                                 <button id="save-rules-btn" class="btn-primary" disabled title="Select a tenant to save rules">Save Rules</button>
                             </div>
@@ -345,9 +366,6 @@
                         <div class="content-header">
                             <h2>Document Categories</h2>
                             <div class="content-actions">
-                                <select id="categories-tenant-select" class="tenant-select">
-                                    <option value="">— Select tenant —</option>
-                                </select>
                                 <button id="create-category-btn" class="btn-primary" disabled>+ Create Category</button>
                                 <button id="refresh-categories-btn" class="btn-secondary">Refresh</button>
                             </div>
@@ -367,6 +385,37 @@
                         <p id="no-categories" class="empty-state hidden">No categories found.</p>
                     </div>
 
+                    <!-- Test Documents View -->
+                    <div id="view-test-documents" class="content-view hidden">
+                        <div class="content-header">
+                            <h2>Test Document Extraction</h2>
+                            <div class="content-actions">
+                                <select id="test-tenant-select" class="tenant-select">
+                                    <option value="">— Select tenant —</option>
+                                </select>
+                                <select id="test-category-select" class="tenant-select">
+                                    <option value="">— Select category —</option>
+                                </select>
+                                <input type="file" id="test-file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif">
+                                <button id="run-test-btn" class="btn-primary" disabled>Run Extraction</button>
+                                <button id="cancel-test-btn" class="btn-secondary hidden">Cancel</button>
+                            </div>
+                        </div>
+                        <p class="test-note">Upload a document to test extraction. Processing takes approximately 30 seconds.</p>
+                        <div id="test-elapsed" class="test-elapsed hidden"></div>
+                        <div class="test-two-panel">
+                            <div class="test-history-panel">
+                                <h3>Test History</h3>
+                                <ul id="test-history-list" class="test-history-list">
+                                    <li class="empty-state">No tests yet</li>
+                                </ul>
+                            </div>
+                            <div class="test-detail-panel">
+                                <div id="test-results" class="test-results hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Empty State -->
                     <div id="view-empty" class="content-view">
                         <div class="empty-state-full">
@@ -383,6 +432,11 @@
             <div class="modal-content">
                 <h2>Create API Key</h2>
                 <form id="create-form">
+                    <label for="key-tenant">Tenant</label>
+                    <select id="key-tenant" required>
+                        <option value="">— Select tenant —</option>
+                    </select>
+
                     <label for="client-name">Client name</label>
                     <input type="text" id="client-name" placeholder="e.g. acme-ingest" required>
 
@@ -393,14 +447,8 @@
                         <option value="prod">prod</option>
                     </select>
 
-                    <button type="button" id="toggle-advanced" class="link-button">Show advanced options</button>
-                    <div id="advanced-fields" class="hidden">
-                        <label for="client-expires-at">Expires at (optional)</label>
-                        <input type="datetime-local" id="client-expires-at">
-
-                        <label for="client-email">Owner email (optional)</label>
-                        <input type="email" id="client-email" placeholder="Defaults to your email">
-                    </div>
+                    <label for="client-email">Owner email (optional)</label>
+                    <input type="email" id="client-email" placeholder="Defaults to your email">
 
                     <div class="modal-actions">
                         <button type="button" id="cancel-create" class="btn-secondary">Cancel</button>
@@ -490,6 +538,31 @@
                     <button type="button" id="delete-user-cancel" class="btn-secondary">Cancel</button>
                     <button type="button" id="delete-user-confirm" class="btn-danger">Delete user</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Create/Edit Category Modal -->
+        <div id="category-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="category-modal-title">Create category</h2>
+                <form id="category-form">
+                    <label for="category-name">Category name</label>
+                    <p class="field-hint">Lowercase letters, numbers, dashes, and underscores only.</p>
+                    <input type="text" id="category-name" placeholder="e.g. income" required pattern="[a-z0-9_-]+">
+
+                    <label for="category-display-name">Display name</label>
+                    <input type="text" id="category-display-name" placeholder="Income Documents" required>
+
+                    <label for="category-description">Description (optional)</label>
+                    <input type="text" id="category-description" placeholder="W2s, 1099s, pay stubs">
+
+                    <p id="category-form-error" class="error hidden"></p>
+
+                    <div class="modal-actions">
+                        <button type="button" id="category-cancel" class="btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </div>
+                </form>
             </div>
         </div>
 

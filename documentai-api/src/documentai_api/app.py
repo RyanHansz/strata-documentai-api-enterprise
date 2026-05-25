@@ -14,6 +14,7 @@ from documentai_api.app_audit_log import router as audit_log_router
 
 # Routers
 from documentai_api.app_batch import router as batch_router
+from documentai_api.app_blueprint_test import router as blueprint_test_router
 from documentai_api.app_build import router as build_router
 from documentai_api.app_dictionary import router as dictionary_router
 from documentai_api.app_document_categories import router as document_categories_router
@@ -53,6 +54,7 @@ app.include_router(tenants_router)
 app.include_router(users_router)
 app.include_router(audit_log_router)
 app.include_router(document_categories_router)
+app.include_router(blueprint_test_router)
 
 app.add_middleware(
     CORSMiddleware,

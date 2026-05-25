@@ -9,12 +9,6 @@ API_AUTH_KEY_HEADER_NAME = "API-Key"
 DEFAULT_TIMEOUT = 30
 
 # === Document categories ===
-DOCUMENT_CATEGORIES = [
-    "income",
-    "expenses",
-    "legal_documents",
-    "employment_training",
-]
 
 # === Upload / S3 metadata keys ===
 UPLOAD_METADATA_KEYS = {
@@ -76,6 +70,18 @@ class BdaJobStatus(StrEnum):
     SERVICE_ERROR = "ServiceError"
     CLIENT_ERROR = "ClientError"
 
+    @classmethod
+    def is_running(cls, status: str) -> bool:
+        return status in (cls.CREATED, cls.IN_PROGRESS)
+
+    @classmethod
+    def is_completed(cls, status: str) -> bool:
+        return status == cls.SUCCESS
+
+    @classmethod
+    def is_failed(cls, status: str) -> bool:
+        return status in (cls.SERVICE_ERROR, cls.CLIENT_ERROR)
+
 
 class BdaResponseFields:
     EXPLAINABILITY_INFO = "explainability_info"
@@ -110,11 +116,13 @@ class ConfigDefaults:
     MAX_PAGES_PER_DOCUMENT = 5
 
 
+# Document categories — must match the BDA project keys in infra/environments/*/main.tf
 class DocumentCategory(StrEnum):
     INCOME = "income"
     EXPENSES = "expenses"
-    LEGAL_DOCUMENTS = "legal_documents"
-    EMPLOYMENT_TRAINING = "employment_training"
+    IDENTITY = "identity"
+    EMPLOYMENT = "employment"
+    TRAINING = "training"
 
 
 class FileValidation:

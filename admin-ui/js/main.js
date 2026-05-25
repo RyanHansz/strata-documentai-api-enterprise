@@ -3,6 +3,7 @@
  */
 import * as Session from "./utils/session.js";
 import * as Toast from "./utils/toast.js";
+import * as TenantContext from "./utils/tenant-context.js";
 import * as HttpClient from "./services/http.js";
 import * as Auth from "./services/auth.js";
 import * as KeysView from "./views/keys.js";
@@ -78,12 +79,14 @@ function showContentView(viewId) {
 async function init() {
   await loadConfig();
   Auth.configure(CONFIG.cognitoUserPoolId, CONFIG.cognitoClientId);
+  TenantContext.init(document.getElementById("global-tenant-select"));
 
   const session = Session.get();
   if (session && !Session.isExpired()) {
     if (routeAfterLogin(session)) {
       KeysView.load();
       BlueprintsView.load();
+      TenantContext.load();
     }
   } else {
     Session.clear();
@@ -114,6 +117,15 @@ BlueprintsView.init({
   discardBtn: document.getElementById("discard-rules-btn"),
   saveBtn: document.getElementById("save-rules-btn"),
   tenantSelect: document.getElementById("tenant-select"),
+  testBtn: document.getElementById("test-blueprint-btn"),
+  testTenantSelect: document.getElementById("test-tenant-select"),
+  testCategorySelect: document.getElementById("test-category-select"),
+  testFileInput: document.getElementById("test-file-input"),
+  runTestBtn: document.getElementById("run-test-btn"),
+  cancelTestBtn: document.getElementById("cancel-test-btn"),
+  testElapsed: document.getElementById("test-elapsed"),
+  testResults: document.getElementById("test-results"),
+  testHistoryList: document.getElementById("test-history-list"),
   onNavigate: showContentView,
 });
 
@@ -136,6 +148,7 @@ LoginView.init({
     if (routeAfterLogin(session)) {
       await KeysView.load();
       await BlueprintsView.load();
+      await TenantContext.load();
     }
   },
 });
@@ -160,6 +173,22 @@ document.querySelectorAll(".nav-section-header").forEach((header) => {
   });
 });
 
+
+
+// Manage Documents collapsible toggle
+document.getElementById("manage-documents-toggle").addEventListener("click", () => {
+  const body = document.getElementById("subsection-documents");
+  const arrow = document.getElementById("manage-documents-toggle").querySelector(".nav-arrow");
+  const isOpen = !body.classList.contains("hidden");
+  if (isOpen) {
+    body.classList.add("hidden");
+    arrow.textContent = "☰";
+  } else {
+    body.classList.remove("hidden");
+    arrow.textContent = "✕";
+  }
+});
+
 // Nav items
 document.querySelectorAll(".nav-item").forEach((item) => {
   item.addEventListener("click", () => {
@@ -171,6 +200,7 @@ document.querySelectorAll(".nav-item").forEach((item) => {
     if (item.dataset.view === "users-manage") UsersView.load();
     if (item.dataset.view === "tenants-manage") TenantsView.load();
     if (item.dataset.view === "doc-categories-manage") DocumentCategoriesView.load();
+    if (item.dataset.view === "test-documents") BlueprintsView.loadTestView();
   });
 });
 
@@ -185,6 +215,7 @@ async function logout() {
     }
   }
   Session.clear();
+  BlueprintsView.clearTestHistory();
   LoginView.reset();
   showView(loginView);
 }

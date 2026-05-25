@@ -21,7 +21,7 @@ from documentai_api.utils.auth import (
     find_api_key_by_prefix,
     generate_api_key,
 )
-from documentai_api.utils.jwt_auth import tenant_scope, verify_jwt
+from documentai_api.utils.jwt_auth import resolve_tenant, tenant_scope, verify_jwt
 
 logger = get_logger(__name__)
 
@@ -51,9 +51,22 @@ async def create_api_key(
     if email_address is None and claims.get("email"):
         email_address = claims["email"]
 
-    # Pin the key to the caller's tenant. Super-admins (no scope) can omit
-    # this, in which case the key is created with no tenant binding.
-    caller_tenant = tenant_scope(claims)
+    # Resolve tenant — required for key creation
+    effective_tenant = resolve_tenant(claims, body.tenant_id)
+    if not effective_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tenant_id is required when creating keys as super-admin.",
+        )
+
+    # Validate tenant exists
+    from documentai_api.utils.tenants import get_tenant
+
+    if not get_tenant(effective_tenant):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tenant '{effective_tenant}' does not exist.",
+        )
 
     try:
         api_key, existing_keys = generate_api_key(
@@ -62,7 +75,7 @@ async def create_api_key(
             expires_at=expires_at,
             created_by=created_by,
             email_address=email_address,
-            tenant_id=caller_tenant,
+            tenant_id=effective_tenant,
         )
     except Exception as e:
         logger.error(f"Failed to generate API key: {e}")
@@ -75,7 +88,7 @@ async def create_api_key(
         action=AuditAction.KEY_CREATE,
         target_type=AuditTargetType.KEY,
         target_id=hashlib.sha256(api_key.encode()).hexdigest()[:8],
-        tenant_id=caller_tenant,
+        tenant_id=effective_tenant,
         metadata={
             "client_name": client_name,
             "environment": environment,
@@ -98,6 +111,7 @@ async def list_api_keys(
     claims: AdminClaims,
     client_name: str | None = None,
     include_inactive: bool = False,
+    tenant_id: str | None = None,
 ) -> ListApiKeysResponse:
     """List API keys.
 
@@ -107,7 +121,7 @@ async def list_api_keys(
     from documentai_api.config.env import get_aws_config
     from documentai_api.services import ddb as ddb_service
 
-    caller_tenant = tenant_scope(claims)
+    effective_tenant = resolve_tenant(claims, tenant_id)
 
     try:
         table_name = get_aws_config().api_keys_table_name
@@ -115,10 +129,11 @@ async def list_api_keys(
             raise ValueError("API_KEYS_TABLE_NAME not configured")
         all_records = ddb_service.scan(table_name)
 
-        # Tenant-admins only see their tenant; super-admins (caller_tenant is
-        # None) see everything.
-        if caller_tenant is not None:
-            all_records = [r for r in all_records if r.get(ApiKeyRecord.TENANT_ID) == caller_tenant]
+        # Filter by effective tenant
+        if effective_tenant is not None:
+            all_records = [
+                r for r in all_records if r.get(ApiKeyRecord.TENANT_ID) == effective_tenant
+            ]
         if client_name:
             all_records = [r for r in all_records if r.get(ApiKeyRecord.CLIENT_NAME) == client_name]
         records = (
@@ -137,6 +152,7 @@ async def list_api_keys(
     items = [
         ApiKeyItem(
             client_name=record.get(ApiKeyRecord.CLIENT_NAME),
+            tenant_id=record.get(ApiKeyRecord.TENANT_ID),
             environment=record.get(ApiKeyRecord.ENVIRONMENT),
             is_active=record.get(ApiKeyRecord.IS_ACTIVE),
             created_at=record.get(ApiKeyRecord.CREATED_AT),

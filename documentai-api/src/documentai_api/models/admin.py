@@ -10,6 +10,7 @@ class CreateApiKeyRequest(BaseApiResponse):
     environment: str = "dev"
     email_address: str | None = None
     expires_at: AwareDatetime | None = None
+    tenant_id: str | None = None
 
 
 class CreateApiKeyResponse(BaseApiResponse):
@@ -23,6 +24,7 @@ class CreateApiKeyResponse(BaseApiResponse):
 
 class ApiKeyItem(BaseApiResponse):
     client_name: str | None = None
+    tenant_id: str | None = None
     environment: str | None = None
     is_active: bool | None = None
     created_at: str | None = None

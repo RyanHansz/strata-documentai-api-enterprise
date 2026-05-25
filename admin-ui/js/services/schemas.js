@@ -7,3 +7,8 @@ export async function list() {
 export async function get(documentType) {
   return adminClient.request("GET", `/v1/dictionary/schemas/${encodeURIComponent(documentType)}`);
 }
+
+
+export async function getCategories() {
+  return adminClient.request("GET", "/v1/dictionary/document-categories");
+}

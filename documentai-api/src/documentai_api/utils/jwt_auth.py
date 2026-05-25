@@ -155,3 +155,18 @@ def tenant_scope(claims: dict[str, Any]) -> str | None:
             detail="Account has no tenant assigned. Contact an administrator.",
         )
     return tenant
+
+
+def resolve_tenant(claims: dict[str, Any], requested_tenant_id: str | None = None) -> str | None:
+    """Resolve the effective tenant for an operation.
+
+    Tenant-admins: always returns their own tenant (ignores requested).
+    Super-admins: returns requested_tenant_id (or None for "all").
+
+    Use when the endpoint allows None (e.g. list all). For endpoints that
+    require a tenant, check the return value and raise 400 if None.
+    """
+    scope = tenant_scope(claims)
+    if scope is not None:
+        return scope
+    return requested_tenant_id

@@ -3,7 +3,7 @@
 from documentai_api.schemas.audit_event import GLOBAL_TENANT, AuditEventRecord
 from documentai_api.utils.audit import log_event
 
-CLAIMS = {"sub": "user-123", "email": "admin@example.com"}
+CLAIMS = {"sub": "test-user", "email": "admin@example.com"}
 
 
 def test_log_event_writes_to_ddb(audit_events_table):
@@ -23,7 +23,7 @@ def test_log_event_writes_to_ddb(audit_events_table):
     assert item[AuditEventRecord.ACTION] == "tenant.create"
     assert item[AuditEventRecord.TARGET_TYPE] == "tenant"
     assert item[AuditEventRecord.TARGET_ID] == "acme"
-    assert item[AuditEventRecord.ACTOR_SUB] == "user-123"
+    assert item[AuditEventRecord.ACTOR_SUB] == "test-user"
     assert item[AuditEventRecord.ACTOR_EMAIL] == "admin@example.com"
     assert item[AuditEventRecord.METADATA] == {"display_name": "Acme Corp"}
     assert AuditEventRecord.TTL in item
