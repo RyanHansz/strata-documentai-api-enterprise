@@ -12,6 +12,7 @@ from mangum import Mangum
 from documentai_api.app_admin_documents import router as admin_documents_router
 from documentai_api.app_api_keys import router as api_keys_router
 from documentai_api.app_audit_log import router as audit_log_router
+from documentai_api.app_me import router as me_router
 
 # Routers
 from documentai_api.app_batch import router as batch_router
@@ -57,6 +58,7 @@ app.include_router(audit_log_router)
 app.include_router(admin_documents_router)
 app.include_router(document_categories_router)
 app.include_router(blueprint_test_router)
+app.include_router(me_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -28,6 +28,7 @@ class UserContext(BaseModel):
 
     tenant_id: str
     api_key_name: str
+    auth_method: str = "api_key"
 
 
 # tracks when lastUsed was last written per key hash: {key_hash: monotonic_time}
@@ -450,7 +451,7 @@ async def get_user_context_with_fallback(
             claims = _decode_and_verify(credentials.credentials)
             tenant_id = get_tenant_id(claims) or "__admin__"
             api_key_name = claims.get("email") or claims.get("sub", "unknown")
-            return UserContext(tenant_id=tenant_id, api_key_name=api_key_name)
+            return UserContext(tenant_id=tenant_id, api_key_name=api_key_name, auth_method="jwt")
         except Exception:
             pass
 

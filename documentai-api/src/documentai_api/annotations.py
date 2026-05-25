@@ -4,7 +4,7 @@ Centralizes repeated Annotated types so endpoint signatures stay DRY.
 Import and use directly as parameter type hints.
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, Form, Header, Query
 from pydantic import StringConstraints
@@ -18,6 +18,8 @@ from documentai_api.utils.auth import (
     get_user_context_from_api_key,
     get_user_context_with_fallback,
 )
+
+AuthMethod = Literal["api_key", "jwt"]
 from documentai_api.utils.jwt_auth import require_role, require_super_admin, verify_jwt
 
 
