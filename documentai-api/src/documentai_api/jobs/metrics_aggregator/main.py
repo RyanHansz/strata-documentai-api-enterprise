@@ -12,6 +12,7 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from documentai_api.config.constants import (
+    ATHENA_QUERY_TIMEOUT_SECONDS,
     S3_AGG_DDB_DATA_DAILY_PREFIX,
     S3_AGG_DDB_DATA_MONTHLY_PREFIX,
     AthenaQueryStatus,
@@ -52,13 +53,35 @@ def _build_deduplication_query(database_name: str, table_name: str, target_date:
     return query
 
 
-def _aggregate_records(records: list[dict[str, Any]], target_date: str) -> dict[str, Any]:
-    """Aggregate records into stats."""
-    stats = _initialize_stats(target_date)
+def _aggregate_records(
+    records: list[dict[str, Any]], target_date: str
+) -> dict[str, dict[str, Any]]:
+    """Aggregate records into stats, grouped by tenant.
+
+    Returns a dict of {tenant_id: stats}. The special key "__global__" contains
+    the aggregate across all tenants.
+    """
+    global_stats = _initialize_stats(target_date)
+    by_tenant: dict[str, dict[str, Any]] = {}
 
     for record in records:
-        _process_record(record, stats)
+        _process_record(record, global_stats)
 
+        tenant_id = record.get("tenant_id") or "__unknown__"
+        if tenant_id not in by_tenant:
+            by_tenant[tenant_id] = _initialize_stats(target_date)
+        _process_record(record, by_tenant[tenant_id])
+
+    _finalize_timing(global_stats)
+    for stats in by_tenant.values():
+        _finalize_timing(stats)
+
+    by_tenant["__global__"] = global_stats
+    return by_tenant
+
+
+def _finalize_timing(stats: dict[str, Any]) -> None:
+    """Compute timing averages from sums/counts."""
     for prefix in (
         TimingMetrics.TOTAL_PROCESSING_TIME,
         TimingMetrics.BDA_PROCESSING_TIME,
@@ -69,8 +92,6 @@ def _aggregate_records(records: list[dict[str, Any]], target_date: str) -> dict[
             stats["timing_stats"][f"{prefix}_avg"] = round(
                 stats["timing_stats"][f"{prefix}_sum"] / count, 2
             )
-
-    return stats
 
 
 def _execute_athena_query(query: str, database_name: str, workgroup_name: str) -> str:
@@ -84,9 +105,6 @@ def _execute_athena_query(query: str, database_name: str, workgroup_name: str) -
     )
 
     return response["QueryExecutionId"]
-
-
-ATHENA_QUERY_TIMEOUT_SECONDS = 300
 
 
 def _get_athena_results(execution_id: str) -> list[dict[str, Any]]:
@@ -226,32 +244,39 @@ def _process_record(record: dict[str, Any], stats: dict[str, Any]) -> None:
             )
 
 
-def _write_aggregated_stats(bucket: str, stats: dict[str, Any], target_date: str) -> str:
-    """Write aggregated stats to S3."""
+def _write_aggregated_stats(
+    bucket: str, stats_by_tenant: dict[str, dict[str, Any]], target_date: str
+) -> str:
+    """Write aggregated stats to S3, one file per tenant + global."""
     s3 = AWSClientFactory.get_s3_client()
 
-    s3_key = f"{S3_AGG_DDB_DATA_DAILY_PREFIX}={target_date}/stats.json"
+    for tenant_id, stats in stats_by_tenant.items():
+        # round sums to avoid floating point precision issues
+        stats["timing_stats"]["total_processing_time_sum"] = round(
+            stats["timing_stats"]["total_processing_time_sum"], 2
+        )
+        stats["timing_stats"]["bda_processing_time_sum"] = round(
+            stats["timing_stats"]["bda_processing_time_sum"], 2
+        )
+        stats["timing_stats"]["bda_wait_time_sum"] = round(
+            stats["timing_stats"]["bda_wait_time_sum"], 2
+        )
 
-    # round sums to avoid floating point precision issues
-    stats["timing_stats"]["total_processing_time_sum"] = round(
-        stats["timing_stats"]["total_processing_time_sum"], 2
-    )
-    stats["timing_stats"]["bda_processing_time_sum"] = round(
-        stats["timing_stats"]["bda_processing_time_sum"], 2
-    )
-    stats["timing_stats"]["bda_wait_time_sum"] = round(
-        stats["timing_stats"]["bda_wait_time_sum"], 2
-    )
+        if tenant_id == "__global__":
+            s3_key = f"{S3_AGG_DDB_DATA_DAILY_PREFIX}={target_date}/stats.json"
+        else:
+            s3_key = f"{S3_AGG_DDB_DATA_DAILY_PREFIX}={target_date}/tenant={tenant_id}/stats.json"
 
-    s3.put_object(
-        Bucket=bucket,
-        Key=s3_key,
-        Body=json.dumps(stats, default=str),
-        ContentType="application/json",
-    )
+        s3.put_object(
+            Bucket=bucket,
+            Key=s3_key,
+            Body=json.dumps(stats, default=str),
+            ContentType="application/json",
+        )
+        logger.info(f"Aggregated stats written to s3://{bucket}/{s3_key}")
 
-    logger.info(f"Aggregated stats written to s3://{bucket}/{s3_key}")
-    return s3_key
+    global_key = f"{S3_AGG_DDB_DATA_DAILY_PREFIX}={target_date}/stats.json"
+    return global_key
 
 
 def _get_daily_stats_for_month(bucket: str, yyyymm: str) -> list[dict[str, Any]]:
@@ -356,12 +381,13 @@ def main(target_date: str, overwrite: bool = False) -> dict[str, Any]:
                 "message": "No records found, skipping aggregation",
             }
 
-        stats = _aggregate_records(records, target_date)
-        s3_key = _write_aggregated_stats(metrics_bucket, stats, target_date)
+        stats_by_tenant = _aggregate_records(records, target_date)
+        s3_key = _write_aggregated_stats(metrics_bucket, stats_by_tenant, target_date)
+        global_stats = stats_by_tenant["__global__"]
         daily_result = {
             "statusCode": 200,
             "date": target_date,
-            "recordsProcessed": stats["total_records"],
+            "recordsProcessed": global_stats["total_records"],
             "outputLocation": f"s3://{metrics_bucket}/{s3_key}",
         }
 

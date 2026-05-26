@@ -699,6 +699,12 @@ module "metrics_processor_lambda" {
   memory_size           = 512
   environment_variables = local.lambda_env_vars
   policy_arns           = local.lambda_policy_arns
+
+  sqs_trigger = {
+    queue_arn                   = module.metrics_queue.queue_arn
+    batch_size                  = 10
+    max_batching_window_seconds = 300
+  }
 }
 
 module "metrics_aggregator_lambda" {
@@ -713,5 +719,16 @@ module "metrics_aggregator_lambda" {
   environment_variables = local.lambda_env_vars
   policy_arns           = local.lambda_policy_arns
 
-  schedule_expression = "rate(1 day)"
+  schedules = [
+    {
+      name                = "current-day"
+      schedule_expression = "rate(5 minutes)"
+      input               = { mode = "today", overwrite = "true" }
+    },
+    {
+      name                = "prior-day"
+      schedule_expression = "cron(0 2 * * ? *)"
+      input               = { mode = "yesterday", overwrite = "true" }
+    },
+  ]
 }

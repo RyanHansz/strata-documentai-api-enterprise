@@ -44,10 +44,30 @@ variable "s3_trigger" {
   default     = null
 }
 
+variable "sqs_trigger" {
+  type = object({
+    queue_arn                   = string
+    batch_size                  = optional(number, 10)
+    max_batching_window_seconds = optional(number, 300)
+  })
+  description = "SQS queue trigger config"
+  default     = null
+}
+
 variable "schedule_expression" {
   type        = string
   description = "EventBridge schedule expression (e.g. rate(1 day))"
   default     = null
+}
+
+variable "schedules" {
+  type = list(object({
+    name                = string
+    schedule_expression = string
+    input               = optional(map(string))
+  }))
+  description = "Multiple EventBridge schedules with optional input payloads"
+  default     = []
 }
 
 variable "vpc_config" {
@@ -92,6 +112,26 @@ resource "aws_iam_role_policy_attachment" "extra" {
   for_each   = var.policy_arns
   role       = aws_iam_role.this.name
   policy_arn = each.value
+}
+
+# SQS permissions for Lambda
+resource "aws_iam_role_policy" "sqs_access" {
+  count = var.sqs_trigger != null ? 1 : 0
+  name  = "${var.function_name}-sqs"
+  role  = aws_iam_role.this.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+      ]
+      Resource = [var.sqs_trigger.queue_arn]
+    }]
+  })
 }
 
 # --- Lambda Function ---
@@ -171,7 +211,17 @@ resource "aws_lambda_permission" "eventbridge_s3" {
   source_arn    = aws_cloudwatch_event_rule.s3_trigger[0].arn
 }
 
-# --- EventBridge Schedule (for scheduled jobs) ---
+# --- SQS Event Source Mapping ---
+
+resource "aws_lambda_event_source_mapping" "sqs" {
+  count                              = var.sqs_trigger != null ? 1 : 0
+  event_source_arn                   = var.sqs_trigger.queue_arn
+  function_name                      = aws_lambda_function.this.arn
+  batch_size                         = var.sqs_trigger.batch_size
+  maximum_batching_window_in_seconds = var.sqs_trigger.max_batching_window_seconds
+}
+
+# --- EventBridge Schedule (single, legacy) ---
 
 resource "aws_cloudwatch_event_rule" "schedule" {
   count               = var.schedule_expression != null ? 1 : 0
@@ -193,6 +243,31 @@ resource "aws_lambda_permission" "schedule" {
   function_name = aws_lambda_function.this.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.schedule[0].arn
+}
+
+# --- EventBridge Schedules (multiple, with input payloads) ---
+
+resource "aws_cloudwatch_event_rule" "schedules" {
+  for_each            = { for s in var.schedules : s.name => s }
+  name                = "${var.function_name}-${each.key}"
+  schedule_expression = each.value.schedule_expression
+}
+
+resource "aws_cloudwatch_event_target" "schedules" {
+  for_each  = { for s in var.schedules : s.name => s }
+  rule      = aws_cloudwatch_event_rule.schedules[each.key].name
+  target_id = "${var.function_name}-${each.key}"
+  arn       = aws_lambda_function.this.arn
+  input     = each.value.input != null ? jsonencode(each.value.input) : null
+}
+
+resource "aws_lambda_permission" "schedules" {
+  for_each      = { for s in var.schedules : s.name => s }
+  statement_id  = "AllowEventBridge-${each.key}"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.this.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.schedules[each.key].arn
 }
 
 # --- Outputs ---

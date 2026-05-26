@@ -459,3 +459,33 @@ async def get_user_context_with_fallback(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Missing or invalid API-Key or Authorization header",
     )
+
+
+def resolve_tenant_from_context(
+    auth: UserContext, requested_tenant_id: str | None = None
+) -> str | None:
+    """Resolve the effective tenant from a UserContext.
+
+    - API key callers: always scoped to their tenant (rejects mismatched requested_tenant_id)
+    - JWT super-admins (tenant_id == "__admin__"): use requested_tenant_id or None for global
+    - JWT tenant-admins: locked to their own tenant (rejects mismatched requested_tenant_id)
+    """
+    if auth.auth_method == "api_key":
+        if requested_tenant_id and requested_tenant_id != auth.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied.",
+            )
+        return auth.tenant_id
+
+    # JWT caller
+    if auth.tenant_id == "__admin__":
+        return requested_tenant_id
+
+    # Tenant-admin
+    if requested_tenant_id and requested_tenant_id != auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied.",
+        )
+    return auth.tenant_id

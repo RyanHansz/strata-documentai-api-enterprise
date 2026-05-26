@@ -59,9 +59,19 @@ resource "aws_glue_catalog_table" "raw_metrics" {
   table_type = "EXTERNAL_TABLE"
 
   parameters = {
-    "classification"     = "json"
-    "EXTERNAL"           = "TRUE"
-    "has_encrypted_data" = "false"
+    "classification"                = "json"
+    "EXTERNAL"                      = "TRUE"
+    "has_encrypted_data"            = "false"
+    "projection.enabled"            = "true"
+    "projection.date.type"          = "date"
+    "projection.date.format"        = "yyyy-MM-dd"
+    "projection.date.range"         = "2024-01-01,NOW"
+    "projection.date.interval"      = "1"
+    "projection.date.interval.unit" = "DAYS"
+    "projection.hour.type"          = "integer"
+    "projection.hour.range"         = "0,23"
+    "projection.hour.digits"        = "2"
+    "storage.location.template"     = "s3://${var.metrics_bucket_name}/raw/utc/date=$${date}/hour=$${hour}/"
   }
 
   storage_descriptor {

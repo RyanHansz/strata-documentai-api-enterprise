@@ -35,7 +35,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "Either 'mode' (current/prior_day) or 'target_date' (YYYY-MM-DD) is required"
         )
 
-    overwrite = event.get("overwrite", False)
+    overwrite = str(event.get("overwrite", "false")).lower() == "true"
     logger.info(f"Aggregating metrics for {target_date} (overwrite={overwrite})")
     result = main(target_date, overwrite)
     logger.info(f"Aggregation complete: {result}")

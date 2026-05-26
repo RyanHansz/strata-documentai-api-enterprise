@@ -22,6 +22,7 @@ from documentai_api.app_document_categories import router as document_categories
 from documentai_api.app_documents import router as documents_router
 from documentai_api.app_extraction_rules import router as extraction_rules_router
 from documentai_api.app_me import router as me_router
+from documentai_api.app_metrics import router as metrics_router
 from documentai_api.app_presigned import router as presigned_router
 from documentai_api.app_tenants import router as tenants_router
 from documentai_api.app_users import router as users_router
@@ -59,6 +60,7 @@ app.include_router(admin_documents_router)
 app.include_router(document_categories_router)
 app.include_router(blueprint_test_router)
 app.include_router(me_router)
+app.include_router(metrics_router)
 
 app.add_middleware(
     CORSMiddleware,

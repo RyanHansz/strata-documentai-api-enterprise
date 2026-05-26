@@ -365,3 +365,6 @@ class AthenaQueryStatus:
             AthenaQueryStatus.FAILED,
             AthenaQueryStatus.CANCELLED,
         }
+
+
+ATHENA_QUERY_TIMEOUT_SECONDS = 300
