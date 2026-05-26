@@ -51,9 +51,9 @@ def test_config_includes_batch_endpoints(api_client):
     response = api_client.get("/config")
     assert response.status_code == 200
     endpoints = response.json()["endpoints"]
-    assert "batchUpload" in endpoints
-    assert "batchUploadZip" in endpoints
-    assert "batchUploadStatus" in endpoints
+    assert "upload_document_batch" in endpoints
+    assert "upload_zip_batch" in endpoints
+    assert "get_batch_status" in endpoints
 
 
 def test_batch_upload_success(api_client, pdf_file):

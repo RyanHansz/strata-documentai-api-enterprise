@@ -18,9 +18,9 @@ from documentai_api.utils.auth import (
     get_user_context_from_api_key,
     get_user_context_with_fallback,
 )
+from documentai_api.utils.jwt_auth import require_role, require_super_admin, verify_jwt
 
 AuthMethod = Literal["api_key", "jwt"]
-from documentai_api.utils.jwt_auth import require_role, require_super_admin, verify_jwt
 
 
 async def verify_jwt_with_role(

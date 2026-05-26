@@ -169,7 +169,6 @@ async def _upload_document(
 
 @router.post(
     "/v1/documents",
-    name="postUpload",
     status_code=status.HTTP_202_ACCEPTED,
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
@@ -203,7 +202,6 @@ async def create_document(
 
 @router.post(
     "/v1/documents/wait",
-    name="postUploadWait",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
 async def create_document_wait(
@@ -307,7 +305,6 @@ async def get_document_results(
 
 @router.delete(
     "/v1/documents/{job_id}",
-    name="deleteDocument",
     tags=[ApiVisualizationTag.DOCUMENTS_DELETE],
 )
 async def delete_document(job_id: uuid.UUID, auth: AuthUser) -> Response:
@@ -354,7 +351,6 @@ async def delete_document(job_id: uuid.UUID, auth: AuthUser) -> Response:
 
 @router.post(
     "/v1/documents/search",
-    name="searchDocuments",
     tags=[ApiVisualizationTag.DOCUMENTS_QUERY],
 )
 async def search_documents(body: DocumentSearchRequest, auth: AuthUser) -> DocumentSearchResponse:

@@ -6,6 +6,7 @@ from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from documentai_api.annotations import AdminClaims, IsoDateParam, PageLimit, verify_jwt_with_role
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
 from documentai_api.models.audit import AuditActionsResponse, AuditEventItem, AuditLogResponse
 from documentai_api.schemas.audit_event import (
@@ -21,7 +22,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/admin/audit-log",
-    tags=["admin-audit-log"],
+    tags=[ApiVisualizationTag.ADMIN_AUDIT_LOG],
     dependencies=[Depends(verify_jwt_with_role)],
 )
 

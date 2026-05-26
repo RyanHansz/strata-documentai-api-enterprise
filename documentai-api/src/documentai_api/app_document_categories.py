@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from documentai_api.annotations import AdminClaims, verify_jwt_with_role
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
 from documentai_api.models.document_category import (
     CreateDocumentCategoryRequest,
@@ -20,7 +21,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/admin/document-categories",
-    tags=["admin-document-categories"],
+    tags=[ApiVisualizationTag.ADMIN_CATEGORIES],
     dependencies=[Depends(verify_jwt_with_role)],
 )
 

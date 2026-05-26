@@ -126,7 +126,6 @@ async def add_page_to_build(
 
 @router.post(
     "/v1/builds",
-    name="postDocumentBuild",
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
 )
 async def create_build(
@@ -168,7 +167,6 @@ async def create_build(
 
 @router.post(
     "/v1/builds/{build_id}/pages",
-    name="postDocumentBuildPage",
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_PAGES],
 )
@@ -231,7 +229,6 @@ async def upload_document_build_page(
 
 @router.post(
     "/v1/builds/{build_id}/pages/batch",
-    name="postDocumentBuildPageBatch",
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_PAGES],
 )
@@ -439,7 +436,6 @@ async def _submit_build(response: Response, build_id: str, trace_id: str | None)
 
 @router.post(
     "/v1/builds/{build_id}/submit",
-    name="postDocumentBuildSubmit",
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
@@ -462,7 +458,6 @@ async def submit_document_build(
 
 @router.post(
     "/v1/builds/{build_id}/submit/wait",
-    name="postDocumentBuildSubmitWait",
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
 )
@@ -495,7 +490,6 @@ async def submit_document_build_wait(
 
 @router.get(
     "/v1/builds/{build_id}",
-    name="getDocumentBuildStatus",
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_STATUS],
 )
@@ -534,7 +528,6 @@ async def get_document_build(
 
 @router.delete(
     "/v1/builds/{build_id}/pages/{page_number}",
-    name="deleteDocumentBuildPage",
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_PAGES],
 )
@@ -561,7 +554,6 @@ async def delete_document_build_page_endpoint(build_id: str, page_number: int) -
 
 @router.delete(
     "/v1/builds/{build_id}",
-    name="deleteDocumentBuild",
     dependencies=[Depends(validate_build_tenant_access)],
     tags=[ApiVisualizationTag.BUILDS_LIFECYCLE],
 )

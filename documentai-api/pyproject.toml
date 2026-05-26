@@ -47,7 +47,7 @@ bda_result_processor = "documentai_api.jobs.bda_result_processor.main:app"
 document_processor = "documentai_api.jobs.document_processor.main:app"
 export-openapi = "documentai_api.cli.export_openapi:app"
 api-keys = "documentai_api.cli.api_keys:app"
-generate-api-sunburst = "documentai_api.cli.generate_api_sunburst:app"
+generate-api-visualization = "documentai_api.cli.generate_api_sunburst:app"
 
 [tool.mypy]
 pretty = true

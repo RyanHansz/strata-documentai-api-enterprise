@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import Field
 
 from documentai_api.annotations import AdminClaims, verify_jwt_with_role
-from documentai_api.config.constants import BdaJobStatus
+from documentai_api.config.constants import ApiVisualizationTag, BdaJobStatus
 from documentai_api.config.env import EnvVars, get_aws_config, get_required_env
 from documentai_api.logging import get_logger
 from documentai_api.models.base import BaseApiResponse
@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/admin/blueprints",
-    tags=["admin-blueprints"],
+    tags=[ApiVisualizationTag.ADMIN_BLUEPRINTS],
     dependencies=[Depends(verify_jwt_with_role)],
 )
 

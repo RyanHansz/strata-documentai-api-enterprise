@@ -41,7 +41,6 @@ _CSV_RESPONSES: dict[int | str, dict[str, Any]] = {
 
 @router.get(
     "/v1/dictionary/schemas",
-    name="getSchemaList",
     tags=[ApiVisualizationTag.DICTIONARY_SCHEMAS],
 )
 async def list_schemas(
@@ -60,7 +59,6 @@ async def list_schemas(
 
 @router.get(
     "/v1/dictionary/schemas/{document_type}",
-    name="getSchemaDetail",
     response_model=None,
     responses=_CSV_RESPONSES,
     tags=[ApiVisualizationTag.DICTIONARY_SCHEMAS],
@@ -100,7 +98,6 @@ async def get_schema_detail(
 
 @router.get(
     "/v1/dictionary/fields",
-    name="getAllFields",
     response_model=None,
     responses=_CSV_RESPONSES,
     tags=[ApiVisualizationTag.DICTIONARY_FIELDS],
@@ -127,7 +124,6 @@ async def get_all_schema_fields(
 
 @router.get(
     "/v1/dictionary/search",
-    name="searchSchemas",
     response_model=None,
     responses=_CSV_RESPONSES,
     tags=[ApiVisualizationTag.DICTIONARY_FIELDS],
@@ -163,7 +159,6 @@ async def search_schema_fields(
 
 @router.get(
     "/v1/dictionary/response-codes",
-    name="getResponseCodes",
     response_model=None,
     responses=_CSV_RESPONSES,
     tags=[ApiVisualizationTag.DICTIONARY_REFERENCE],
@@ -189,7 +184,6 @@ async def get_response_codes(
 
 @router.get(
     "/v1/dictionary/document-categories",
-    name="getDocumentCategories",
     response_model=None,
     responses=_CSV_RESPONSES,
     tags=[ApiVisualizationTag.DICTIONARY_REFERENCE],

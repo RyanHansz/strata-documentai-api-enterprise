@@ -156,9 +156,6 @@ clean: ## Clean build artifacts
 openapi-spec: ## Export openapi spec to docs directory
 	$(PY_RUN_CMD) export-openapi > $(APP_DOCS_DIR)/openapi.json
 
-api-sunburst: ## Generate API sunburst chart
-	$(PY_RUN_CMD) generate-api-sunburst --output $(APP_DOCS_DIR)/media/api_sunburst.html
-
 architecture-diagram:
 	docker run --rm \
 	-v $(APP_DOCS_DIR):/data \
@@ -166,6 +163,10 @@ architecture-diagram:
 	-i diagrams/architecture.mmd \
 	-o media/architecture.png \
 	--iconPacks '@iconify-json/logos'
+
+api-viz: ## Generate API visualizations (sunburst + architecture diagram)
+	uv run --frozen generate-api-visualization --output $(APP_DOCS_DIR)/media/api_sunburst.png
+	$(MAKE) architecture-diagram
 
 help: ## Show help
 	@grep -Eh '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'

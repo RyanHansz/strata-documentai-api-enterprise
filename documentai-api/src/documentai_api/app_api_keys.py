@@ -5,6 +5,7 @@ import hashlib
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from documentai_api.annotations import AdminClaims
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
 from documentai_api.models.api_key import (
     ApiKeyItem,
@@ -29,7 +30,7 @@ logger = get_logger(__name__)
 # additionally requires a role assignment, so pending users get a 403 there.
 router = APIRouter(
     prefix="/v1/admin",
-    tags=["admin"],
+    tags=[ApiVisualizationTag.ADMIN_API_KEYS],
     dependencies=[Depends(verify_jwt)],
 )
 

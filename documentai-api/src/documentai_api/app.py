@@ -12,7 +12,6 @@ from mangum import Mangum
 from documentai_api.app_admin_documents import router as admin_documents_router
 from documentai_api.app_api_keys import router as api_keys_router
 from documentai_api.app_audit_log import router as audit_log_router
-from documentai_api.app_me import router as me_router
 
 # Routers
 from documentai_api.app_batch import router as batch_router
@@ -22,6 +21,7 @@ from documentai_api.app_dictionary import router as dictionary_router
 from documentai_api.app_document_categories import router as document_categories_router
 from documentai_api.app_documents import router as documents_router
 from documentai_api.app_extraction_rules import router as extraction_rules_router
+from documentai_api.app_me import router as me_router
 from documentai_api.app_presigned import router as presigned_router
 from documentai_api.app_tenants import router as tenants_router
 from documentai_api.app_users import router as users_router

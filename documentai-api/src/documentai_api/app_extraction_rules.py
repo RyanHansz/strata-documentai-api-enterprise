@@ -57,7 +57,6 @@ def _resolve_tenant(auth_tenant_id: str, body_tenant_id: str | None) -> str:
 
 @router.get(
     "/v1/config/extraction-rules",
-    name="getExtractionRules",
     response_model=ExtractionRulesListResponse,
     tags=[ApiVisualizationTag.CONFIG_RULES],
 )
@@ -81,7 +80,6 @@ async def get_extraction_rules(
 
 @router.put(
     "/v1/config/extraction-rules",
-    name="putExtractionRule",
     response_model=ExtractionRuleItem,
     tags=[ApiVisualizationTag.CONFIG_RULES],
 )
@@ -105,7 +103,6 @@ async def put_extraction_rule(
 
 @router.delete(
     "/v1/config/extraction-rules",
-    name="deleteExtractionRule",
     response_model=ExtractionRuleDeleteResponse,
     tags=[ApiVisualizationTag.CONFIG_RULES],
 )

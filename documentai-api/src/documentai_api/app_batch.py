@@ -240,7 +240,6 @@ async def _execute_batch(
 
 @router.post(
     "/v1/documents/batch",
-    name="batchUpload",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
 async def upload_document_batch(
@@ -284,7 +283,6 @@ async def upload_document_batch(
 
 @router.post(
     "/v1/documents/batch/zip",
-    name="batchUploadZip",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
 async def upload_zip_batch(
@@ -325,7 +323,6 @@ async def upload_zip_batch(
 @router.get(
     "/v1/batches/{batch_id}",
     dependencies=[Depends(validate_batch_tenant_access)],
-    name="batchUploadStatus",
     tags=[ApiVisualizationTag.DOCUMENTS_QUERY],
 )
 async def get_batch_status(batch_id: str) -> BatchStatusResponse:

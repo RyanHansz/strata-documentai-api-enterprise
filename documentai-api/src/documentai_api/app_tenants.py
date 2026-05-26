@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from documentai_api.annotations import AdminClaims, SuperAdminClaims, verify_jwt_with_role
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
 from documentai_api.models.tenant import (
     CreateTenantRequest,
@@ -23,7 +24,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/admin/tenants",
-    tags=["admin-tenants"],
+    tags=[ApiVisualizationTag.ADMIN_TENANTS],
     dependencies=[Depends(verify_jwt_with_role)],
 )
 

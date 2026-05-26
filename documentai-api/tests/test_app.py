@@ -30,11 +30,11 @@ def test_config_endpoints_discovered(api_client):
     response = api_client.get("/config")
     endpoints = response.json()["endpoints"]
 
-    # known API endpoints should be present
-    assert "getExtractionRules" in endpoints
-    assert "getSchemaList" in endpoints
-    assert "postUpload" in endpoints
-    assert "postUploadWait" in endpoints
+    # known API endpoints should be present (auto-generated from function names)
+    assert "get_extraction_rules" in endpoints
+    assert "list_schemas" in endpoints
+    assert "create_document" in endpoints
+    assert "create_document_wait" in endpoints
 
     # excluded routes should not appear
     excluded_paths = set(endpoints.values())

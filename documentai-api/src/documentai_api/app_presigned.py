@@ -50,7 +50,6 @@ def _validate_trace_id(trace_id: str | None) -> str:
 
 @router.post(
     "/v1/documents/presigned-url",
-    name="createPresignedUrl",
     tags=[ApiVisualizationTag.DOCUMENTS_UPLOAD],
 )
 async def create_presigned_upload_url(

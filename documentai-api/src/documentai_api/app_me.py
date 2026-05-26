@@ -3,9 +3,10 @@
 from fastapi import APIRouter
 
 from documentai_api.annotations import AuthMethod, AuthUserWithFallback
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.models.base import BaseApiResponse
 
-router = APIRouter(tags=["identity"])
+router = APIRouter(tags=[ApiVisualizationTag.IDENTITY])
 
 
 class MeResponse(BaseApiResponse):
@@ -14,7 +15,7 @@ class MeResponse(BaseApiResponse):
     auth_method: AuthMethod
 
 
-@router.get("/v1/me", response_model=MeResponse)
+@router.get("/v1/me")
 async def get_me(auth: AuthUserWithFallback) -> MeResponse:
     """Return the authenticated user's identity context.
 

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from documentai_api.annotations import SuperAdminClaims, verify_jwt_with_super_admin
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.logging import get_logger
 from documentai_api.schemas.audit_event import AuditAction, AuditTargetType
 from documentai_api.services import cognito as cognito_service
@@ -23,7 +24,7 @@ Role = Literal["super-admin", "tenant-admin"]
 
 router = APIRouter(
     prefix="/v1/admin/users",
-    tags=["admin-users"],
+    tags=[ApiVisualizationTag.ADMIN_USERS],
     dependencies=[Depends(verify_jwt_with_super_admin)],
 )
 

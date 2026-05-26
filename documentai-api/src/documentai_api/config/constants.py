@@ -334,6 +334,14 @@ class ApiVisualizationTag:
     DICTIONARY_FIELDS = "Dictionary:Fields"
     DICTIONARY_REFERENCE = "Dictionary:Reference"
     CONFIG_RULES = "Config:Rules"
+    ADMIN_API_KEYS = "Admin:API Keys"
+    ADMIN_TENANTS = "Admin:Tenants"
+    ADMIN_USERS = "Admin:Users"
+    ADMIN_AUDIT_LOG = "Admin:Audit Log"
+    ADMIN_DOCUMENTS = "Admin:Documents"
+    ADMIN_CATEGORIES = "Admin:Categories"
+    ADMIN_BLUEPRINTS = "Admin:Blueprints"
+    IDENTITY = "Identity"
 
 
 class AthenaQueryStatus:

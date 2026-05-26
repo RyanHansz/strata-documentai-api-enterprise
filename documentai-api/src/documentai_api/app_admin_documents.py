@@ -7,6 +7,7 @@ from boto3.dynamodb.conditions import Attr, Key
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from documentai_api.annotations import AdminClaims, PageLimit, verify_jwt_with_role
+from documentai_api.config.constants import ApiVisualizationTag
 from documentai_api.config.env import get_aws_config
 from documentai_api.logging import get_logger
 from documentai_api.models.admin_document import (
@@ -23,7 +24,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/admin/documents",
-    tags=["admin-documents"],
+    tags=[ApiVisualizationTag.ADMIN_DOCUMENTS],
     dependencies=[Depends(verify_jwt_with_role)],
 )
 
