@@ -34,3 +34,14 @@ describe("tenant-context", () => {
     expect(calls.length).toBe(1);
   });
 });
+
+describe("tenant-context loading state", () => {
+  it("shows loading placeholder and disables select on init", () => {
+    document.body.innerHTML = '<select id="tc"></select>';
+    const select = document.querySelector("#tc");
+    TenantContext.init(select);
+
+    expect(select.disabled).toBe(true);
+    expect(select.options[0].textContent).toBe("Loading tenants...");
+  });
+});

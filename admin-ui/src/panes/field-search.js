@@ -33,7 +33,16 @@ export function mount(root) {
     _timeout = setTimeout(() => search(_input.value.trim()), 200);
   });
 
-  _unsub = Store.subscribe(() => {});
+  _unsub = Store.subscribe((state) => {
+    if (state.activeDocType && _input && _input.value) {
+      _input.value = "";
+      _results.replaceChildren();
+      _dirty = false;
+      _searchRules = {};
+      const editor = document.querySelector("#extraction-rule-editor-pane");
+      if (editor) editor.classList.remove("hidden");
+    }
+  });
 
   return unmount;
 }
@@ -62,16 +71,11 @@ async function loadRulesForDocType(tenantId, docType) {
 
 function search(query) {
   const editor = document.querySelector("#extraction-rule-editor-pane");
-  const title = document.querySelector("#view-title");
   if (!query) {
     _results.innerHTML = "";
     _dirty = false;
     _searchRules = {};
     if (editor) editor.classList.remove("hidden");
-    const activeNav = document.querySelector(".sidebar-nav .nav-item.active");
-    if (title)
-      title.textContent =
-        Store.get().activeDocType || (activeNav ? activeNav.textContent.trim() : "");
     return;
   }
 
@@ -88,7 +92,6 @@ function search(query) {
 
   if (editor) editor.classList.add("hidden");
   Store.set({ activeDocType: null });
-  if (title) title.textContent = `Search: "${query}"`;
 
   if (matches.length === 0) {
     _results.replaceChildren(h("p", { className: "empty-state" }, "No fields found."));
@@ -122,7 +125,7 @@ async function renderResults(grouped) {
   const discardBtn = document.querySelector("#bp-discard-btn");
 
   if (saveBtn) {
-    saveBtn.classList.remove("hidden");
+    saveBtn.classList.add("hidden");
     saveBtn.disabled = true;
     saveBtn.textContent = "Save Changes";
     saveBtn.onclick = async () => {
@@ -144,7 +147,10 @@ async function renderResults(grouped) {
 
   function markDirty() {
     _dirty = true;
-    if (saveBtn) saveBtn.disabled = false;
+    if (saveBtn) {
+      saveBtn.classList.remove("hidden");
+      saveBtn.disabled = false;
+    }
     if (discardBtn) discardBtn.classList.remove("hidden");
   }
 

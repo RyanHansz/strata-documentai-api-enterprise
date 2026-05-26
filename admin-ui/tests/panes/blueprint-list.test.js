@@ -64,3 +64,32 @@ describe("blueprint-list pane", () => {
     expect(root.innerHTML).toBe("");
   });
 });
+
+describe("blueprint-list scroll behavior", () => {
+  let root;
+
+  beforeEach(() => {
+    Store.reset();
+    root = document.createElement("ul");
+    document.body.innerHTML = "";
+
+    // Create the main area scroll container
+    const mainArea = document.createElement("div");
+    mainArea.id = "bp-main-area";
+    mainArea.scrollTop = 500;
+    document.body.appendChild(mainArea);
+    document.body.appendChild(root);
+  });
+
+  it("scrolls main area to top when blueprint clicked", () => {
+    Store.set({ schemasLoading: false, schemas: { W2: [], Payslip: [] } });
+    BlueprintList.mount(root);
+
+    const mainArea = document.querySelector("#bp-main-area");
+    mainArea.scrollTop = 500;
+
+    root.querySelector(".nav-item").click();
+
+    expect(mainArea.scrollTop).toBe(0);
+  });
+});

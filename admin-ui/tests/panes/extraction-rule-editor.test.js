@@ -213,3 +213,34 @@ describe("extraction-rule-editor saveRules", () => {
     expect(RulesService.put).not.toHaveBeenCalled();
   });
 });
+
+describe("extraction-rule-editor header", () => {
+  let root;
+
+  beforeEach(() => {
+    Store.reset();
+    root = document.createElement("div");
+    document.body.innerHTML =
+      '<div id="view-actions"><button id="bp-save-btn"></button><button id="bp-discard-btn"></button></div>';
+    document.body.appendChild(root);
+  });
+
+  it("renders blueprint name as header when activeDocType set", () => {
+    Store.set({
+      schemas: { W2: [{ name: "ssn", type: "string" }] },
+      activeDocType: "W2",
+      tenantId: "test-tenant",
+      rules: {},
+    });
+    ExtractionRuleEditor.mount(root);
+    const header = root.querySelector(".fields-list-header");
+    expect(header).toBeTruthy();
+    expect(header.textContent).toBe("W2");
+  });
+
+  it("does not render header when no activeDocType", () => {
+    Store.set({ schemas: { W2: [{ name: "ssn" }] }, tenantId: "t" });
+    ExtractionRuleEditor.mount(root);
+    expect(root.querySelector(".fields-list-header")).toBeFalsy();
+  });
+});

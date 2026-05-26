@@ -45,6 +45,8 @@ function render(state) {
     a.textContent = docType;
     a.addEventListener("click", () => {
       Store.set({ activeDocType: docType, dirty: false });
+      const mainArea = document.querySelector("#bp-main-area");
+      if (mainArea) mainArea.scrollTop = 0;
     });
     li.appendChild(a);
     _root.appendChild(li);

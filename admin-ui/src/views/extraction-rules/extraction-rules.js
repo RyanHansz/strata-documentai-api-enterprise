@@ -33,17 +33,7 @@ export function mount(root) {
     BlueprintList.mount(root.querySelector("#bp-list-pane")),
     ExtractionRuleEditor.mount(root.querySelector("#extraction-rule-editor-pane")),
     FieldSearch.mount(root.querySelector("#bp-search-pane")),
-    Store.subscribe((state) => {
-      const title = document.querySelector("#view-title");
-      if (title) {
-        const activeNav = document.querySelector(".sidebar-nav .nav-item.active");
-        title.textContent = state.activeDocType
-          ? state.activeDocType
-          : activeNav
-            ? activeNav.textContent.trim()
-            : "";
-      }
-    }),
+    Store.subscribe(() => {}),
   ];
 
   loadSchemas();

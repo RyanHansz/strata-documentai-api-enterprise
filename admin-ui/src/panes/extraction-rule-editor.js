@@ -103,6 +103,10 @@ function render(state) {
   }
 
   fieldsList.replaceChildren();
+
+  // Blueprint name header
+  fieldsList.appendChild(h("h3", { className: "fields-list-header" }, activeDocType));
+
   for (const field of fields) {
     const fieldState = rules[field.name] || "excluded";
     const radioName = `rule-${field.name}`;

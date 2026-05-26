@@ -11,6 +11,8 @@ const _listeners = [];
 
 export function init(selectEl) {
   _select = selectEl;
+  _select.innerHTML = '<option value="">Loading tenants...</option>';
+  _select.disabled = true;
   _select.addEventListener("change", () => {
     _currentTenantId = _select.value || null;
     _listeners.forEach((fn) => fn(_currentTenantId));
@@ -24,6 +26,7 @@ export async function load() {
   _loading = true;
   const current = _select.value;
   _select.innerHTML = '<option value="">All Tenants</option>';
+  _select.disabled = false;
   try {
     const resp = await TenantsService.list();
     for (const tenant of resp.tenants || []) {

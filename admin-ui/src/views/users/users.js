@@ -1,6 +1,7 @@
 import * as UsersService from "../../services/users.js";
 import * as TenantsService from "../../services/tenants.js";
 import * as Helpers from "../../utils/helpers.js";
+import { openModal, closeModal } from "../../utils/modal.js";
 import * as Toast from "../../utils/toast.js";
 import { h } from "../../utils/dom.js";
 import { tpl } from "../../utils/tpl.js";
@@ -137,11 +138,11 @@ async function openAssignModal(user) {
     _assignRoleSelect.value = user.groups[0];
   }
   toggleTenantRow();
-  _assignModal.classList.remove("hidden");
+  openModal(_assignModal);
 }
 
 function closeAssignModal() {
-  _assignModal.classList.add("hidden");
+  closeModal(_assignModal);
   _pendingUsername = null;
 }
 
@@ -178,11 +179,11 @@ function openDeleteModal(user) {
   _pendingUsername = user.username;
   _deleteEmail.textContent = user.email;
   _deleteError.classList.add("hidden");
-  _deleteModal.classList.remove("hidden");
+  openModal(_deleteModal);
 }
 
 function closeDeleteModal() {
-  _deleteModal.classList.add("hidden");
+  closeModal(_deleteModal);
   _pendingUsername = null;
 }
 

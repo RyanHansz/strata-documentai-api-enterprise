@@ -1,6 +1,7 @@
 import * as TenantsService from "../../services/tenants.js";
 import * as TenantContext from "../../utils/tenant-context.js";
 import * as Helpers from "../../utils/helpers.js";
+import { openModal, closeModal } from "../../utils/modal.js";
 import * as Toast from "../../utils/toast.js";
 import { h } from "../../utils/dom.js";
 import { tpl } from "../../utils/tpl.js";
@@ -51,7 +52,7 @@ export function mount(root) {
   _createBtn.addEventListener("click", openCreateModal);
   _refreshBtn.addEventListener("click", () => load());
   _showInactive.addEventListener("change", () => load());
-  _cancelBtn.addEventListener("click", closeModal);
+  _cancelBtn.addEventListener("click", closeTenantModal);
   _form.addEventListener("submit", handleSubmit);
   _deleteCancel.addEventListener("click", closeDeleteModal);
   _deleteConfirm.addEventListener("click", handleDelete);
@@ -120,7 +121,7 @@ function openCreateModal() {
   _nameInput.value = "";
   _contactInput.value = "";
   _errorEl.classList.add("hidden");
-  _modal.classList.remove("hidden");
+  openModal(_modal);
 }
 
 function openEditModal(tenant) {
@@ -131,11 +132,11 @@ function openEditModal(tenant) {
   _nameInput.value = tenant.displayName || "";
   _contactInput.value = tenant.primaryContact || "";
   _errorEl.classList.add("hidden");
-  _modal.classList.remove("hidden");
+  openModal(_modal);
 }
 
-function closeModal() {
-  _modal.classList.add("hidden");
+function closeTenantModal() {
+  closeModal(_modal);
   _editingTenant = null;
 }
 
@@ -156,7 +157,7 @@ async function handleSubmit(e) {
       Toast.show("Tenant created");
       TenantContext.load();
     }
-    closeModal();
+    closeTenantModal();
     load();
   } catch (err) {
     _errorEl.textContent = err.message;
@@ -168,11 +169,11 @@ function openDeleteModal(tenant) {
   _pendingDeleteId = tenant.tenantId;
   _deleteName.textContent = tenant.displayName || tenant.tenantId;
   _deleteError.classList.add("hidden");
-  _deleteModal.classList.remove("hidden");
+  openModal(_deleteModal);
 }
 
 function closeDeleteModal() {
-  _deleteModal.classList.add("hidden");
+  closeModal(_deleteModal);
   _pendingDeleteId = null;
 }
 

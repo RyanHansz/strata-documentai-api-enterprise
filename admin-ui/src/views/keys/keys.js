@@ -1,6 +1,7 @@
 import * as Helpers from "../../utils/helpers.js";
 import * as KeysService from "../../services/keys.js";
 import * as TenantContext from "../../utils/tenant-context.js";
+import { openModal, closeModal } from "../../utils/modal.js";
 import { h } from "../../utils/dom.js";
 import { tpl } from "../../utils/tpl.js";
 import html from "./keys.html";
@@ -47,14 +48,10 @@ export function mount(root) {
   _confirmRevoke = root.querySelector("#confirm-revoke");
 
   _createKeyBtn.addEventListener("click", openCreateModal);
-  _cancelCreate.addEventListener("click", () => {
-    _createModal.classList.add("hidden");
-  });
+  _cancelCreate.addEventListener("click", () => closeModal(_createModal));
   _createForm.addEventListener("submit", handleCreate);
   _copyKeyBtn.addEventListener("click", copyKey);
-  _closeCreated.addEventListener("click", () => {
-    _keyCreatedModal.classList.add("hidden");
-  });
+  _closeCreated.addEventListener("click", () => closeModal(_keyCreatedModal));
   _refreshKeysBtn.addEventListener("click", () => load());
   _cancelRevoke.addEventListener("click", closeRevokeModal);
   _confirmRevoke.addEventListener("click", handleConfirmRevoke);
@@ -78,12 +75,12 @@ export function unmount(root) {
 function openRevokeModal(keyPrefix) {
   _pendingRevokeKey = keyPrefix;
   _revokeKeyPrefix.textContent = keyPrefix;
-  _revokeModal.classList.remove("hidden");
+  openModal(_revokeModal);
 }
 
 function closeRevokeModal() {
   _pendingRevokeKey = null;
-  _revokeModal.classList.add("hidden");
+  closeModal(_revokeModal);
 }
 
 async function handleConfirmRevoke() {
@@ -99,7 +96,7 @@ async function handleConfirmRevoke() {
 }
 
 function openCreateModal() {
-  _createModal.classList.remove("hidden");
+  openModal(_createModal);
   const tenantSelect = _root.querySelector("#key-tenant");
   /** @type {HTMLSelectElement} */
   const globalSelect = document.querySelector("#global-tenant-select");
@@ -133,9 +130,9 @@ async function handleCreate(e) {
       emailAddress,
       tenantId,
     );
-    _createModal.classList.add("hidden");
+    closeModal(_createModal);
     _newKeyValue.textContent = result.apiKey || "-";
-    _keyCreatedModal.classList.remove("hidden");
+    openModal(_keyCreatedModal);
     await load();
   } catch (err) {
     alert(`Failed to create key: ${err.message}`);

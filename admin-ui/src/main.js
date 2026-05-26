@@ -127,6 +127,27 @@ function showDashboard(session) {
   // Logout
   app.querySelector("#logout-btn").addEventListener("click", logout);
 
+  // Sidebar toggle (mobile)
+  const sidebarToggle = app.querySelector("#sidebar-toggle");
+  const sidebarClose = app.querySelector("#sidebar-close");
+  const sidebar = app.querySelector(".sidebar");
+  if (sidebarToggle && sidebar) {
+    const closeSidebar = () => sidebar.classList.remove("sidebar-open");
+
+    sidebarToggle.addEventListener("click", () => {
+      sidebar.classList.add("sidebar-open");
+    });
+    if (sidebarClose) {
+      sidebarClose.addEventListener("click", closeSidebar);
+    }
+    // Close sidebar when nav item clicked (mobile)
+    sidebar.addEventListener("click", (e) => {
+      if (e.target.classList.contains("nav-item")) closeSidebar();
+    });
+    // Close sidebar when clicking outside
+    _mainContent.addEventListener("click", closeSidebar);
+  }
+
   // Default view
   const defaultTitle = app.querySelector("#view-title");
   if (defaultTitle) defaultTitle.textContent = "API Keys";
