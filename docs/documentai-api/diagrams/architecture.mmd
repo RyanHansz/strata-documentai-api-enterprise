@@ -1,35 +1,51 @@
 architecture-beta
+    group admin(logos:aws-cloudfront)[Admin Console]
+    group auth(logos:aws-cognito)[Identity]
     group api(logos:aws-vpc)[API Layer]
     group processing(logos:aws-vpc)[Document Processing]
+    group data-extraction(logos:aws-vpc)[Data Extraction]
     group metrics(logos:aws-vpc)[Metrics Pipeline]
+
+    service cloudfront(logos:aws-cloudfront)[CloudFront] in admin
+    service s3ui(logos:aws-s3)[S3 Static Site] in admin
+
+    service cognito(logos:aws-cognito)[Cognito User Pool] in auth
 
     service apigw(logos:aws-api-gateway)[API Gateway] in api
     service api-lambda(logos:aws-lambda)[API Lambda] in api
 
     service s3input(logos:aws-s3)[S3 Input] in processing
+    service eventbridge1(logos:aws-eventbridge)[EventBridge] in processing
     service document-processor(logos:aws-lambda)[Document Processor] in processing
-    service bedrock(server)[Bedrock Data Automation] in processing
-    service s3output(logos:aws-s3)[S3 Output] in processing
-    service bda-result-processor(logos:aws-lambda)[BDA Result Processor] in processing
     service ddb(logos:aws-dynamodb)[DynamoDB] in processing
-
+    service bedrock(server)[Bedrock Data Automation] in data-extraction
+    service s3output(logos:aws-s3)[S3 Output] in data-extraction
+    service eventbridge2(logos:aws-eventbridge)[EventBridge] in data-extraction
+    service bda-result-processor(logos:aws-lambda)[BDA Result Processor] in data-extraction
+    service ddb2(logos:aws-dynamodb)[DynamoDB] in data-extraction
     service sqs(logos:aws-sqs)[SQS Queue] in metrics
     service metrics-processor(logos:aws-lambda)[Metrics Processor] in metrics
     service s3metrics(logos:aws-s3)[S3 Metrics] in metrics
     service glue(logos:aws-glue)[Glue Database] in metrics
     service metrics-aggregator(logos:aws-lambda)[Metrics Aggregator] in metrics
 
+    cloudfront:R --> L:s3ui
+    cloudfront:B --> T:cognito
+    cognito:R --> L:apigw
+
     apigw:R --> L:api-lambda
     api-lambda:R --> L:s3input
-    s3input:R --> L:document-processor
-    document-processor:R --> L:bedrock
-    document-processor:B --> T:ddb
+    s3input:R --> L:eventbridge1
+    eventbridge1:R --> L:document-processor
+    document-processor:B --> T:bedrock
+    document-processor:T --> B:ddb
     bedrock:R --> L:s3output
-    s3output:R --> L:bda-result-processor
-    bda-result-processor:B --> T:ddb
-    bda-result-processor:R --> L:sqs
-    sqs:R --> L:metrics-processor
-    metrics-processor:R --> L:s3metrics
-    s3metrics:B --> T:glue
-    glue:R --> L:metrics-aggregator
+    s3output:R --> L:eventbridge2
+    eventbridge2:R --> L:bda-result-processor
+    bda-result-processor:T --> B:ddb2
+    bda-result-processor:B --> T:sqs
+    sqs:B --> T:metrics-processor
+    metrics-processor:L --> R:s3metrics
+    s3metrics:L --> R:glue
+    glue:B --> T:metrics-aggregator
     metrics-aggregator:B --> T:s3metrics

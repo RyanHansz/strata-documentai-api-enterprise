@@ -1,305 +1,248 @@
 # DocumentAI API
 
-This is the application code for DocumentAI.
+Python API for document processing, classification, and data extraction using AWS Bedrock Data Automation.
 
 ## Overview
 
-A document processing system built on AWS that uses Amazon Bedrock Data Automation (BDA) to classify and extract data from uploaded documents.
+A serverless document processing system deployed as a Lambda container. Handles document upload, intelligent classification, field extraction, multi-tenant API key management, and admin operations.
 
 ## Architecture
 
-The system follows an event-driven architecture with two main layers:
-
-- **API Layer** - Document upload and status endpoints  
-- **Processing** - Document classification and data extraction pipeline  
-
-![Architecture Diagram](../docs/documentai-api/media/architecture.png)
+The system follows an event-driven architecture. See the [architecture diagram](../docs/documentai-api/diagrams/architecture.mmd) for the complete system view.
 
 **Processing Flow:**
-1. A document is uploaded via DocumentAI API endpoint
-2. DocumentAI API validates and stores document in S3 bucket
-3. S3 event triggers `document_processor` job
-4. Document Processor invokes Bedrock Data Automation for classification/extraction
-5. BDA outputs results to S3 bucket
-6. S3 event triggers `bda_output_processor` job to process results and update DynamoDB
-
-For detailed component descriptions, see [Project Structure](#project-structure).
+1. Document uploaded via API endpoint, stored in S3, metadata written to DynamoDB
+2. EventBridge triggers Document Processor Lambda
+3. Document Processor invokes Bedrock Data Automation with tenant-specific blueprint
+4. BDA writes results to S3 output bucket
+5. EventBridge triggers BDA Result Processor to extract fields and update DynamoDB
+6. Metrics emitted to SQS → Metrics Processor → S3 (Parquet) → Glue
 
 ## Features
 
-- **AWS Bedrock Data Automation (BDA) Integration** - Automated document classification and data extraction
-- **Intelligent Document Detection** - Quality analysis, blur detection, and document validation
-- **Multi-format Support** - Process PDF, JPEG, PNG, and TIFF documents
-- **Event-driven Processing** - S3-triggered pipeline for scalable document processing
-- **Testing** - 87% test coverage with unit and integration tests
-- **Local Development** - Docker Compose environment for testing without AWS deployment
-- **Structured Logging** - Standardized logging across all components
-- **DynamoDB Tracking** - Complete processing history and metadata storage
+- **Bedrock Data Automation** — Multi-project BDA with per-category blueprint routing
+- **Multi-tenant** — API key auth (DynamoDB-backed) with tenant isolation
+- **Admin API** — Tenant, user, API key, extraction rule, and document category management
+- **Cognito JWT auth** — Admin endpoints secured with Cognito User Pool tokens
+- **Metrics pipeline** — SQS → Lambda → S3 Parquet → Glue with partition projection
+- **Audit logging** — All admin actions recorded
+- **Multi-format** — PDF, JPEG, PNG, TIFF support
+- **Sync + async** — Upload with optional `?wait=true` for synchronous processing
 
-## File Requirements & Limitations
+## File Requirements
 
-**Supported file formats:**
-- PDF
-- JPEG
-- PNG  
-- TIFF
+| Format | Max Size |
+|--------|----------|
+| PDF | 500 MB |
+| JPEG, PNG, TIFF | 5 MB |
 
-**File size limits:**
-- **Images** (JPEG, PNG, TIFF): Maximum 5 MB per file
-- **PDF documents**: Maximum 500 MB per file
-
-**PDF page handling:**
-- PDFs with more than 5 pages (configurable) are automatically trimmed to the first 5 pages
-- Quality checks are performed on the first 5 (configurable) pages only
-
-> **Note:** The 5-page default was chosen for performance optimization. Documents are trimmed rather than rejected to ensure processing can proceed.
-
-**Document requirements:**
+- PDFs > 5 pages are trimmed to first 5 (set by `MAX_PAGES_PER_DOCUMENT` in `config/constants.py`)
 - Documents must not be password-protected
-- Minimum text content of 50 characters for document detection
-- Images must meet minimum quality standards (blur detection threshold applied)
-
+- Minimum 50 characters of text content
 
 ## Prerequisites
 
-- **Python 3.11+** - Required for running the application
-- **uv** - Fast Python package installer ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
-- **Docker & Docker Compose** - For local development environment
-- **Make** - For running development commands 
-- **AWS CLI** (optional) - For interacting with AWS services during development
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- Docker & Docker Compose (for local dev)
+- Make
 
-**For deployment:**
-- AWS account with appropriate permissions
-- Infrastructure deployed (see [Deployment](#deployment) section)
+## Quick Start
 
+```bash
+cp local.env.example .env    # First time only
+make init                    # Build Docker containers
+make start                   # Start API at localhost:8000
+```
+
+Or without Docker:
+
+```bash
+make init-local
+export RUN_CMD_APPROACH=local
+make start-local
+```
+
+## Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `make init` | Build Docker containers |
+| `make start` | Start services (detached) |
+| `make run-logs` | Start with log output |
+| `make check` | Run all checks (format, lint, test, test-audit) |
+| `make test` | Run pytest suite |
+| `make test-coverage` | Tests with coverage report |
+| `make test-parallel` | Tests in parallel |
+| `make lint` | Ruff linter |
+| `make format` | Ruff formatter |
 
 ## Configuration
 
-### Environment Variables
+### Required Environment Variables
 
-**Required for AWS service integration** (set by infrastructure when deployed):
+Set by infrastructure on deploy:
 
-- `DOCUMENTAI_INPUT_LOCATION` - S3 bucket for document uploads (e.g., `s3://bucket-name`)
-- `DOCUMENTAI_OUTPUT_LOCATION` - S3 bucket for BDA processing results
-- `DOCUMENTAI_DOCUMENT_METADATA_TABLE_NAME` - DynamoDB table for tracking document processing
-- `BDA_PROJECT_ARN` - AWS Bedrock Data Automation project ARN
-- `BDA_PROFILE_ARN` - AWS Bedrock Data Automation profile ARN
-- `BDA_REGION` - AWS region for BDA service
-- `API_AUTH_INSECURE_SHARED_KEY` - API authentication key for local dev (see [API Authentication](../docs/documentai-api/api-authentication.md))
-- `API_AUTH_ENABLED` - Set to `true` to enable DynamoDB-backed multi-key auth (default: `false`)
-- `API_KEYS_TABLE_NAME` - DynamoDB table for API key hashes (required when `API_AUTH_ENABLED=true`)
+| Variable | Description |
+|----------|-------------|
+| `DOCUMENTAI_INPUT_LOCATION` | S3 bucket for uploads |
+| `DOCUMENTAI_OUTPUT_LOCATION` | S3 bucket for BDA results |
+| `DOCUMENTAI_DOCUMENT_METADATA_TABLE_NAME` | DynamoDB documents table |
+| `BDA_PROJECT_ARN` | Bedrock Data Automation project ARN |
+| `BDA_PROFILE_ARN` | BDA profile ARN |
+| `BDA_REGION` | AWS region for BDA |
+| `API_AUTH_ENABLED` | Enable DynamoDB-backed auth (`true`/`false`) |
+| `API_KEYS_TABLE_NAME` | DynamoDB API keys table |
+| `COGNITO_USER_POOL_ID` | Cognito User Pool ID (admin auth) |
 
+### Optional
 
-**Optional:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `API_AUTH_CACHE_TTL` | `300` | API key cache TTL (seconds) |
+| `API_AUTH_INSECURE_SHARED_KEY` | — | Static API key for local dev (bypasses DynamoDB) |
+| `HOST` | `localhost` | API host |
+| `PORT` | `8000` | API port |
+| `ENVIRONMENT` | `local` | Environment name |
 
-- `API_AUTH_CACHE_TTL` - API key cache TTL in seconds (default: `300`)
+> **Local dev**: The default `.env` (copied from `local.env.example`) sets `API_AUTH_INSECURE_SHARED_KEY=local-dev-key`, which enables a static key bypass without DynamoDB. Use `API-Key: local-dev-key` in requests.
 
+## API Endpoints
 
-**Optional for local development:**
+Full API documentation is available at `/docs` (Swagger UI) and `/openapi.json` when the server is running. A snapshot is committed at [docs/documentai-api/openapi.json](../docs/documentai-api/openapi.json) — regenerate with `uv run export-openapi`.
 
-- `HOST` - API host (default: `localhost`)
-- `PORT` - API port (default: `8000`)
-- `ENVIRONMENT` - Environment name (e.g., `dev`, `prod`, `local`)
+See the [API route map](../docs/documentai-api/diagrams/api-routes.mmd) for a visual overview grouped by auth scheme.
 
+### Document Processing (API-Key auth)
 
-### Application Constants
-
-Core application settings are defined in `src/documentai_api/config/constants.json`. These constants are loaded at startup and do not require environment variables.
-
-- **Document categories** - Supported document types (`income`, `expenses`, `legal_documents`, `employment_training`)
-- **File validation** - Supported content types (PDF, JPEG, PNG, TIFF)
-- **Processing statuses** - Document processing states and completion criteria
-- **BDA configuration** - Job statuses, response field mappings, output prefixes
-- **Timeouts and thresholds** - Confidence thresholds, polling intervals, file size limits
-
-
-## Usage
-
-### Local Development
-
-This project supports two development approaches:
-
-### Option 1: Docker-based Development (Recommended)
-
-Uses Docker Compose to run the application in a containerized environment.
-
-**Setup:**
 ```bash
-make init          # Build Docker containers
-make start         # Start services in detached mode
-make run-logs      # Start and follow logs
-```
-
-**Advantages**:
-- Consistent environment across team members
-- No local Python environment needed
-- Closely matches production environment
-- Isolated dependencies
-
-### Option 2: Native Development
-
-Run the application directly on your machine without Docker.
-
-**Setup**:
-```bash
-make init-local                    # Install dependencies with uv
-export RUN_CMD_APPROACH=local      # Enable native mode
-make start-local                   # Run API server natively
-```
-
-**Advantages**:
-- Faster iteration (no container overhead)
-- Direct debugging in IDE
-- Lower resource usage
-
-*Note*: To persist native mode, add `export RUN_CMD_APPROACH=local` to your `~/.zshrc` or `~/.bashrc`.
-
-### Switching Between Docker and Native
-The Makefile automatically detects the `RUN_CMD_APPROACH` environment variable:
-- **Not set or `docker`**: Commands run in Docker containers
-- **Set to `local`**: Commands run natively on your machine
-
-### API Endpoints
-
-The application will be available at http://localhost:8000.
-
-API endpoints require an `API-Key` header. See [API Authentication](../docs/documentai-api/api-authentication.md) for details. 
-A default key is preconfigured in `local.env.example` and is copied to `.env` during `make init`/`init-local`.
-
-
-**Upload a document (async)** - returns immediately with `jobId` for polling:
-```
+# Async upload
 curl -X POST http://localhost:8000/v1/documents \
   -H "API-Key: your-key" \
-  -F "file=@/path/to/document.pdf" \
+  -F "file=@document.pdf" \
   -F "category=income"
-```
 
-**Upload a document (sync)** - waits for processing to complete:
-
-```
+# Sync upload (wait for result)
 curl -X POST "http://localhost:8000/v1/documents?wait=true&timeout=120" \
   -H "API-Key: your-key" \
-  -F "file=@/path/to/document.pdf" \
+  -F "file=@document.pdf" \
   -F "category=income"
 ```
 
-For more details on API endpoints, see [openapi.json](../documentai-api/docs/openapi.json).
+The `category` field must match a configured document category for the tenant.
 
-### API Key Management
+### Routes by auth scheme
 
-When `API_AUTH_ENABLED=true`, API keys are stored as SHA-256 hashes in DynamoDB. Use the `api-keys` CLI to manage them:
+See `/docs` for the complete list. Routes grouped by auth method:
 
-```bash
-# Generate a new key for a client
-api-keys generate --client-name my-service --environment prod
+**API-Key header** (ingestion / client-facing):
+- `/v1/documents`, `/v1/documents/{job_id}`, `/v1/documents/search`
+- `/v1/documents/batch`, `/v1/batches/{batch_id}`
+- `/v1/documents/presigned-url`
+- `/v1/builds`
 
-# List active keys
-api-keys list
-api-keys list --client-name my-service --include-inactive
+**Cognito JWT** (admin console):
+- `/v1/admin/*` — api-keys, tenants, users, audit-log, documents, document-categories, blueprints/test
 
-# Deactivate a key
-api-keys deactivate --client-name my-service --api-key docai_...
-api-keys deactivate --client-name my-service --all
-```
+**Dual auth (either)**:
+- `/v1/config/extraction-rules`
+- `/v1/dictionary/*`
+- `/v1/metrics`
+- `/v1/me`
 
-The plaintext key is shown once on generation and never stored. Store it securely.
+**Unauthenticated**:
+- `/health`
 
-### Development Commands
-```bash
-make check         # Run all checks (format, lint, test)
-make test          # Run test suite
-make lint          # Run ruff linter
-make format        # Format code with ruff
-```
+### Creating API Keys
+
+API keys can be created via:
+- **Admin UI**: Keys → Create Key
+- **Admin API**: `POST /v1/admin/api-keys`
+- **CLI**: `uv run api-keys generate --api-key-name my-service --environment dev`
 
 ## Testing
 
-Tests use pytest with FastAPI's TestClient and run without requiring actual AWS infrastructure.
-
-**Run all tests:**
-```bash
-make test
-```
-
-**Run tests with coverage report:**
-```bash
-make test-coverage
-```
-
-**Run tests in parallel:**
-```bash
-make test-parallel
-```
-
-**Run specific test file:**
-```bash
-make test args=tests/test_document_detector.py
-```
-
-**Run specific test:**
-```bash
-make test args=tests/test_document_detector.py::test_detect_multipage_document
-```
-
-For more details on writing tests, see [Writing Tests](../docs/documentai-api/writing-tests.md).
-
-
-## 🏗️ Project Structure
+Tests use pytest with moto for AWS service mocking. No real AWS infrastructure required.
 
 ```bash
-├── src/
-│   └── documentai_api/
-│       ├── app.py                        # FastAPI application
-│       ├── main.py                       # CLI entry point
-│       ├── cli/                          # Miscellaneous cli scripts
-│       │   ├── api_keys.py               # API key management CLI
-│       │   ├── export_openapi.py
-│       ├── config/                       # Configuration and constants
-│       │   ├── constants.json
-│       │   └── constants.py
-│       ├── jobs/                         # Background jobs and event handlers
-│       │   ├── bda_result_processor/     # Processes BDA output results
-│       │   └── document_processor/       # Handles document upload events
-│       ├── schemas/                      # Data models
-│       │   ├── api_key.py                # API key DynamoDB field names
-│       │   └── document_metadata.py
-│       ├── services/                     # AWS service clients
-│       │   ├── s3.py
-│       │   ├── ddb.py
-│       │   └── bda.py
-│       └── utils/                        # Utilities and helpers
-│           ├── auth.py                   # API key authentication (DDB + shared key modes)
-│           ├── cache.py                  # Generic in-memory TTL cache
-│           ├── document_detector.py
-│           ├── response_builder.py
-│           ├── bda_invoker.py
-│           ├── bda_output_processor.py
-│           └── ...
-├── tests/                                # Unit and integration tests
-├── docker-compose.yml                    # Local development environment
-├── Dockerfile                            # Container definition
-├── Makefile                              # Development commands
-└── pyproject.toml                        # Python dependencies and configuration
+make test                                    # All tests
+make test args=tests/test_app_documents.py   # Specific file
+make test args="tests/test_auth.py::test_valid_key"  # Specific test
 ```
 
-### Key Components
-- **Jobs** - Event-driven document processing pipeline
-- **Services** - AWS client wrappers for S3, DynamoDB, and Bedrock Data Automation
-- **Utils** - Document detection, quality analysis, response formatting
-- **FastAPI App** - Local development and testing interface
+## Project Structure
+
+```
+src/documentai_api/
+├── main.py                         # Lambda + CLI entry point
+├── app.py                          # FastAPI app + router registration
+├── annotations.py                  # Shared type annotations (AuthMethod, etc.)
+├── app_documents.py                # Document upload/status endpoints
+├── app_batch.py                    # Batch upload endpoints
+├── app_presigned.py                # Presigned URL endpoints
+├── app_build.py                    # Document build/assembly endpoints
+├── app_api_keys.py                 # API key admin endpoints
+├── app_tenants.py                  # Tenant admin endpoints
+├── app_users.py                    # User admin endpoints
+├── app_audit_log.py                # Audit log endpoints
+├── app_admin_documents.py          # Document viewer endpoints
+├── app_document_categories.py      # Category admin endpoints
+├── app_extraction_rules.py         # Extraction rule config endpoints
+├── app_blueprint_test.py           # BDA test runner endpoints
+├── app_dictionary.py               # Schema/field dictionary endpoints
+├── app_metrics.py                  # Metrics query endpoints
+├── app_me.py                       # Current user endpoint
+├── config/
+│   ├── constants.py                # App constants (categories, limits, statuses)
+│   └── env.py                      # Environment variable enum + Pydantic settings
+├── jobs/
+│   ├── document_processor/         # EventBridge → process upload → invoke BDA
+│   ├── bda_result_processor/       # EventBridge → extract fields → update DDB
+│   ├── metrics_processor/          # SQS → write Parquet to S3
+│   └── metrics_aggregator/         # Scheduled → aggregate daily metrics
+├── services/
+│   ├── s3.py                       # S3 client
+│   ├── ddb.py                      # DynamoDB client
+│   ├── bda.py                      # Bedrock Data Automation client
+│   ├── bedrock.py                  # Bedrock runtime client
+│   ├── cognito.py                  # Cognito admin operations
+│   ├── sqs.py                      # SQS client
+│   └── ssm.py                      # SSM Parameter Store client
+├── models/                         # Pydantic request/response models
+├── schemas/                        # DynamoDB field name enums
+├── logging/                        # Structured logging config
+├── utils/
+│   ├── auth.py                     # API key auth + get_user_context_with_fallback
+│   ├── jwt_auth.py                 # Cognito JWT validation
+│   ├── base_crud_table.py          # DynamoDB CRUD base class
+│   ├── base_readonly_table.py      # DynamoDB read-only base class
+│   ├── pagination.py               # Cursor-based pagination
+│   ├── audit.py                    # Audit event recording
+│   ├── tenant_access.py            # Tenant scoping/validation
+│   ├── bda_invoker.py              # BDA invocation logic
+│   ├── bda_output_processor.py     # BDA result parsing
+│   └── ...                         # S3, PDF, image, zip, upload utils
+└── cli/
+    ├── api_keys.py                 # API key management CLI
+    └── export_openapi.py           # Export OpenAPI spec
+tests/
+├── conftest.py                     # Shared fixtures (moto, test client)
+├── helpers/                        # Test utilities
+├── jobs/                           # Job handler tests
+├── test_app_documents.py
+├── test_auth.py
+└── ...
+```
+
+Jobs are packaged in the same container image with separate Lambda handler entry points configured by the infrastructure.
 
 ## Deployment
 
-This application is deployed as part of AWS infrastructure managed in separate repositories. The application code is packaged as a Docker container and deployed to AWS ECS by infrastructure-as-code.
+Deployed as a Lambda container image via the infrastructure in `infra/`:
 
-**Deployment process:**
+```bash
+# From repo root
+make deploy-infra
+```
 
-1. Application code is built into a Docker image
-2. Image is pushed to Amazon ECR
-3. Infrastructure deploys the image to:
-   - ECS Fargate (FastAPI application)
-
-**Environment variables** listed in the [Configuration](#configuration) section are set by the infrastructure during deployment.
-
-For infrastructure setup and deployment instructions, refer to the infrastructure repository documentation.
+This builds the Docker image from `Dockerfile.lambda`, pushes to ECR, and deploys via Terraform. Environment variables are set by the infrastructure modules.

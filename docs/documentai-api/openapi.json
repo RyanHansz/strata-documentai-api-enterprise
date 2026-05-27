@@ -1,0 +1,5920 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Document AI API",
+    "description": "API for document processing",
+    "version": "v1"
+  },
+  "paths": {
+    "/v1/documents": {
+      "post": {
+        "tags": [
+          "Documents:Upload"
+        ],
+        "summary": "Create Document",
+        "description": "Upload a document for processing (fire-and-forget).",
+        "operationId": "create_document_v1_documents_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_document_v1_documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadAsyncResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/wait": {
+      "post": {
+        "tags": [
+          "Documents:Upload"
+        ],
+        "summary": "Create Document Wait",
+        "description": "Upload a document and poll until processing completes or timeout.",
+        "operationId": "create_document_wait_v1_documents_wait_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "include_extracted_data",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Extracted Data"
+            }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 105,
+              "title": "Timeout"
+            }
+          },
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_document_wait_v1_documents_wait_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/{job_id}": {
+      "get": {
+        "tags": [
+          "Documents:Query"
+        ],
+        "summary": "Get Document Results",
+        "description": "Get processing results by job ID.",
+        "operationId": "get_document_results_v1_documents__job_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "include_extracted_data",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Extracted Data"
+            }
+          },
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Documents:Delete"
+        ],
+        "summary": "Delete Document",
+        "description": "Delete a document by job ID. Removes S3 file and marks DDB record as deleted.",
+        "operationId": "delete_document_v1_documents__job_id__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/search": {
+      "post": {
+        "tags": [
+          "Documents:Query"
+        ],
+        "summary": "Search Documents",
+        "description": "Search for multiple documents by job IDs.",
+        "operationId": "search_documents_v1_documents_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/v1/documents/batch": {
+      "post": {
+        "tags": [
+          "Documents:Upload"
+        ],
+        "summary": "Upload Document Batch",
+        "description": "Upload multiple documents as a single batch.",
+        "operationId": "upload_document_batch_v1_documents_batch_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_batch_v1_documents_batch_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/batch/zip": {
+      "post": {
+        "tags": [
+          "Documents:Upload"
+        ],
+        "summary": "Upload Zip Batch",
+        "description": "Upload a ZIP archive of documents as a single batch.",
+        "operationId": "upload_zip_batch_v1_documents_batch_zip_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_zip_batch_v1_documents_batch_zip_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batches/{batch_id}": {
+      "get": {
+        "tags": [
+          "Documents:Query"
+        ],
+        "summary": "Get Batch Status",
+        "description": "Get status of all documents in a batch.\n\nBatch completion is lazily evaluated: when all jobs are complete this endpoint\nupdates the batch status to COMPLETED. For real-time updates use DDB Streams\nor EventBridge.",
+        "operationId": "get_batch_status_v1_batches__batch_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Batch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds": {
+      "post": {
+        "tags": [
+          "Builds:Lifecycle"
+        ],
+        "summary": "Create Build",
+        "description": "Create a new document build for multi-page upload.",
+        "operationId": "create_build_v1_builds_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_build_v1_builds_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildCreatedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds/{build_id}/pages": {
+      "post": {
+        "tags": [
+          "Builds:Pages"
+        ],
+        "summary": "Upload Document Build Page",
+        "description": "Upload a single page for multi-page document processing.",
+        "operationId": "upload_document_build_page_v1_builds__build_id__pages_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_build_page_v1_builds__build_id__pages_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildPageUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds/{build_id}/pages/batch": {
+      "post": {
+        "tags": [
+          "Builds:Pages"
+        ],
+        "summary": "Upload Document Build Pages Batch",
+        "description": "Upload multiple pages to a document build in one request.",
+        "operationId": "upload_document_build_pages_batch_v1_builds__build_id__pages_batch_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_build_pages_batch_v1_builds__build_id__pages_batch_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildPagesBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds/{build_id}/submit": {
+      "post": {
+        "tags": [
+          "Builds:Lifecycle"
+        ],
+        "summary": "Submit Document Build",
+        "description": "Submit a multi-page build for processing (fire-and-forget).",
+        "operationId": "submit_document_build_v1_builds__build_id__submit_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildSubmitAsyncResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds/{build_id}/submit/wait": {
+      "post": {
+        "tags": [
+          "Builds:Lifecycle"
+        ],
+        "summary": "Submit Document Build Wait",
+        "description": "Submit a multi-page build and poll until processing completes or timeout.",
+        "operationId": "submit_document_build_wait_v1_builds__build_id__submit_wait_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "include_extracted_data",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Extracted Data"
+            }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 105,
+              "title": "Timeout"
+            }
+          },
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds/{build_id}": {
+      "get": {
+        "tags": [
+          "Builds:Status"
+        ],
+        "summary": "Get Document Build",
+        "description": "Get document build details including all uploaded pages.",
+        "operationId": "get_document_build_v1_builds__build_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Builds:Lifecycle"
+        ],
+        "summary": "Delete Document Build Endpoint",
+        "description": "Delete an entire document build and all its pages.",
+        "operationId": "delete_document_build_endpoint_v1_builds__build_id__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/builds/{build_id}/pages/{page_number}": {
+      "delete": {
+        "tags": [
+          "Builds:Pages"
+        ],
+        "summary": "Delete Document Build Page Endpoint",
+        "description": "Delete a specific page from a document build.",
+        "operationId": "delete_document_build_page_endpoint_v1_builds__build_id__pages__page_number__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "page_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Page Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/presigned-url": {
+      "post": {
+        "tags": [
+          "Documents:Upload"
+        ],
+        "summary": "Create Presigned Upload Url",
+        "description": "Generate a presigned POST URL for direct S3 upload.\n\nThe returned URL and fields should be used to construct a multipart/form-data\nPOST request to S3. S3 enforces content-type and size limits via the POST policy.",
+        "operationId": "create_presigned_upload_url_v1_documents_presigned_url_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trace-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Trace-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_presigned_upload_url_v1_documents_presigned_url_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dictionary/schemas": {
+      "get": {
+        "tags": [
+          "Dictionary:Schemas"
+        ],
+        "summary": "List Schemas",
+        "description": "List all supported document types.",
+        "operationId": "list_schemas_v1_dictionary_schemas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionarySchemaListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/dictionary/schemas/{document_type}": {
+      "get": {
+        "tags": [
+          "Dictionary:Schemas"
+        ],
+        "summary": "Get Schema Detail",
+        "description": "Get field schema for a specific document type.",
+        "operationId": "get_schema_detail_v1_dictionary_schemas__document_type__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Type"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DictionaryFormatType",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dictionary/fields": {
+      "get": {
+        "tags": [
+          "Dictionary:Fields"
+        ],
+        "summary": "Get All Schema Fields",
+        "description": "Get all fields across all document types.",
+        "operationId": "get_all_schema_fields_v1_dictionary_fields_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DictionaryFormatType",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dictionary/search": {
+      "get": {
+        "tags": [
+          "Dictionary:Fields"
+        ],
+        "summary": "Search Schema Fields",
+        "description": "Search fields across all blueprints.",
+        "operationId": "search_schema_fields_v1_dictionary_search_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "field",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DictionaryBlueprintField"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DictionaryFormatType",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dictionary/response-codes": {
+      "get": {
+        "tags": [
+          "Dictionary:Reference"
+        ],
+        "summary": "Get Response Codes",
+        "description": "Get list of response codes and their meanings.",
+        "operationId": "get_response_codes_v1_dictionary_response_codes_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DictionaryFormatType",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dictionary/document-categories": {
+      "get": {
+        "tags": [
+          "Dictionary:Reference"
+        ],
+        "summary": "Get Document Categories",
+        "description": "Get list of supported document categories (derived from BDA project config).",
+        "operationId": "get_document_categories_v1_dictionary_document_categories_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DictionaryFormatType",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/config/extraction-rules": {
+      "get": {
+        "tags": [
+          "Config:Rules"
+        ],
+        "summary": "Get Extraction Rules",
+        "description": "Get extraction rules for a tenant.",
+        "operationId": "get_extraction_rules_v1_config_extraction_rules_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Type"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionRulesListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Config:Rules"
+        ],
+        "summary": "Put Extraction Rule",
+        "description": "Create or update an extraction rule.",
+        "operationId": "put_extraction_rule_v1_config_extraction_rules_put",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionRuleItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Config:Rules"
+        ],
+        "summary": "Delete Extraction Rule",
+        "description": "Delete an extraction rule.",
+        "operationId": "delete_extraction_rule_v1_config_extraction_rules_delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Type"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionRuleDeleteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/api-keys": {
+      "post": {
+        "tags": [
+          "Admin:API Keys"
+        ],
+        "summary": "Create Api Key",
+        "description": "Create a new API key for a client.",
+        "operationId": "create_api_key_v1_admin_api_keys_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateApiKeyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin:API Keys"
+        ],
+        "summary": "List Api Keys",
+        "description": "List API keys.\n\nBy default returns only active keys. Pass ``include_inactive=true`` to\nreturn both active and revoked keys.",
+        "operationId": "list_api_keys_v1_admin_api_keys_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "api_key_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Api Key Name"
+            }
+          },
+          {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListApiKeysResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/api-keys/{key_id}": {
+      "delete": {
+        "tags": [
+          "Admin:API Keys"
+        ],
+        "summary": "Delete Api Key",
+        "description": "Deactivate an API key by full hash or hash prefix.\n\nTenant-admins can only delete keys belonging to their tenant; super-admins\ncan delete any key.",
+        "operationId": "delete_api_key_v1_admin_api_keys__key_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteApiKeyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/tenants": {
+      "post": {
+        "tags": [
+          "Admin:Tenants"
+        ],
+        "summary": "Create Tenant",
+        "description": "Create a new tenant.",
+        "operationId": "create_tenant_v1_admin_tenants_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin:Tenants"
+        ],
+        "summary": "List Tenants",
+        "description": "List tenants. Super-admins see all; tenant-admins see only their own.",
+        "operationId": "list_tenants_v1_admin_tenants_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Active Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTenantsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/tenants/{tenant_id}": {
+      "get": {
+        "tags": [
+          "Admin:Tenants"
+        ],
+        "summary": "Get Tenant",
+        "description": "Get a single tenant by ID.",
+        "operationId": "get_tenant_v1_admin_tenants__tenant_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin:Tenants"
+        ],
+        "summary": "Update Tenant",
+        "description": "Update a tenant's metadata.",
+        "operationId": "update_tenant_v1_admin_tenants__tenant_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin:Tenants"
+        ],
+        "summary": "Delete Tenant",
+        "description": "Deactivate a tenant (soft delete). Super-admin only.",
+        "operationId": "delete_tenant_v1_admin_tenants__tenant_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteTenantResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Admin:Users"
+        ],
+        "summary": "List Users",
+        "description": "List every user in the pool with their group + tenant assignment.",
+        "operationId": "list_users_v1_admin_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Users V1 Admin Users Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/users/{username}/approve": {
+      "post": {
+        "tags": [
+          "Admin:Users"
+        ],
+        "summary": "Approve User",
+        "description": "Approve a pending user by assigning a role and (for tenant-admin) a tenant.",
+        "operationId": "approve_user_v1_admin_users__username__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Username"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Approve User V1 Admin Users  Username  Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{username}/role": {
+      "post": {
+        "tags": [
+          "Admin:Users"
+        ],
+        "summary": "Change Role",
+        "description": "Change a user's role, or pass ``role: null`` to revoke.",
+        "operationId": "change_role_v1_admin_users__username__role_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Username"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Change Role V1 Admin Users  Username  Role Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{username}/tenant": {
+      "post": {
+        "tags": [
+          "Admin:Users"
+        ],
+        "summary": "Change Tenant",
+        "description": "Set or clear a user's tenant assignment.",
+        "operationId": "change_tenant_v1_admin_users__username__tenant_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Username"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeTenantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Change Tenant V1 Admin Users  Username  Tenant Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{username}": {
+      "delete": {
+        "tags": [
+          "Admin:Users"
+        ],
+        "summary": "Delete User",
+        "description": "Permanently delete a user.",
+        "operationId": "delete_user_v1_admin_users__username__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Username"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete User V1 Admin Users  Username  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/audit-log/actions": {
+      "get": {
+        "tags": [
+          "Admin:Audit Log"
+        ],
+        "summary": "Get Audit Actions",
+        "description": "Return all known audit action strings.",
+        "operationId": "get_audit_actions_v1_admin_audit_log_actions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditActionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/audit-log": {
+      "get": {
+        "tags": [
+          "Admin:Audit Log"
+        ],
+        "summary": "Get Audit Log",
+        "description": "Query audit events.\n\nSuper-admins can query any tenant or by action (via GSI).\nTenant-admins can only query their own tenant's events.",
+        "operationId": "get_audit_log_v1_admin_audit_log_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/documents": {
+      "get": {
+        "tags": [
+          "Admin:Documents"
+        ],
+        "summary": "List Documents",
+        "description": "List documents by tenant, paginated by createdAt descending.\n\nSuper-admins can query any tenant. Tenant-admins are locked to their own.\n\nNote: when status_filter is set, DDB applies Limit before FilterExpression,\nso a page may return fewer than `limit` items. Use next_cursor to fetch more.",
+        "operationId": "list_documents_v1_admin_documents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "status_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status Filter"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/documents/{job_id}": {
+      "get": {
+        "tags": [
+          "Admin:Documents"
+        ],
+        "summary": "Get Document",
+        "description": "Get full document detail by job ID.\n\nSuper-admins can view any document. Tenant-admins can only view their own.",
+        "operationId": "get_document_v1_admin_documents__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/document-categories": {
+      "get": {
+        "tags": [
+          "Admin:Categories"
+        ],
+        "summary": "List Document Categories",
+        "description": "List document categories.\n\nSuper-admins can omit tenant_id to list all categories across tenants.\nTenant-admins are locked to their own tenant.",
+        "operationId": "list_document_categories_v1_admin_document_categories_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Active Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListDocumentCategoriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin:Categories"
+        ],
+        "summary": "Create Document Category",
+        "description": "Create a new document category for a tenant.",
+        "operationId": "create_document_category_v1_admin_document_categories_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDocumentCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCategoryItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/document-categories/{category_name}": {
+      "get": {
+        "tags": [
+          "Admin:Categories"
+        ],
+        "summary": "Get Document Category",
+        "description": "Get a single document category.",
+        "operationId": "get_document_category_v1_admin_document_categories__category_name__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category Name"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCategoryItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin:Categories"
+        ],
+        "summary": "Update Document Category",
+        "description": "Update a document category.",
+        "operationId": "update_document_category_v1_admin_document_categories__category_name__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category Name"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDocumentCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCategoryItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin:Categories"
+        ],
+        "summary": "Delete Document Category",
+        "description": "Deactivate a document category (soft delete).",
+        "operationId": "delete_document_category_v1_admin_document_categories__category_name__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category Name"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/blueprints/test": {
+      "post": {
+        "tags": [
+          "Admin:Blueprints"
+        ],
+        "summary": "Start Blueprint Test",
+        "description": "Upload a document and start BDA extraction.\n\nReturns a test_id to poll for results via GET /test/{test_id}.",
+        "operationId": "start_blueprint_test_v1_admin_blueprints_test_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_start_blueprint_test_v1_admin_blueprints_test_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlueprintTestStartResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/blueprints/test/{test_id}": {
+      "get": {
+        "tags": [
+          "Admin:Blueprints"
+        ],
+        "summary": "Get Blueprint Test Result",
+        "description": "Poll for blueprint test results.",
+        "operationId": "get_blueprint_test_result_v1_admin_blueprints_test__test_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "test_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Test Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlueprintTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "Identity"
+        ],
+        "summary": "Get Me",
+        "description": "Return the authenticated user's identity context.\n\nWorks with both API key and JWT auth. For API key callers, principal is the\nkey name. For JWT callers, principal is the email or sub.\n\nNote: pending JWT users (no Cognito group) still get 200 here \u2014 the UI\nneeds this to render the \"pending approval\" state. Access control is\nenforced at the individual admin endpoints via verify_jwt_with_role.",
+        "operationId": "get_me_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/metrics": {
+      "get": {
+        "tags": [
+          "Documents:Query"
+        ],
+        "summary": "Get Metrics",
+        "description": "Get aggregated metrics for date range.\n\nAPI key callers see their own tenant's metrics.\nJWT super-admins can pass tenant_id or omit for global.\nJWT tenant-admins see their own tenant only.",
+        "operationId": "get_metrics_v1_metrics_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MetricsGranularity",
+              "default": "daily"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "summary": "Get Config",
+        "operationId": "get_config_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiKeyItem": {
+        "properties": {
+          "apiKeyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apikeyname"
+          },
+          "tenantId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenantid"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
+          "isActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isactive"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "lastUsed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastused"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "emailAddress": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emailaddress"
+          },
+          "keyPrefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keyprefix"
+          }
+        },
+        "type": "object",
+        "title": "ApiKeyItem"
+      },
+      "ApproveRequest": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "super-admin",
+              "tenant-admin"
+            ],
+            "title": "Role"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id",
+            "description": "Required for tenant-admin; ignored for super-admin."
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "ApproveRequest"
+      },
+      "AuditActionsResponse": {
+        "properties": {
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actions"
+        ],
+        "title": "AuditActionsResponse"
+      },
+      "AuditEventItem": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "title": "Eventid"
+          },
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "actorSub": {
+            "type": "string",
+            "title": "Actorsub"
+          },
+          "actorEmail": {
+            "type": "string",
+            "title": "Actoremail"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "targetType": {
+            "type": "string",
+            "title": "Targettype"
+          },
+          "targetId": {
+            "type": "string",
+            "title": "Targetid"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventId",
+          "tenantId",
+          "actorSub",
+          "actorEmail",
+          "action",
+          "targetType",
+          "targetId",
+          "timestamp"
+        ],
+        "title": "AuditEventItem"
+      },
+      "AuditLogResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEventItem"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events",
+          "count"
+        ],
+        "title": "AuditLogResponse"
+      },
+      "BatchJobItem": {
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "batchPosition": {
+            "type": "integer",
+            "title": "Batchposition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fileName",
+          "jobId",
+          "batchPosition"
+        ],
+        "title": "BatchJobItem"
+      },
+      "BatchStatusJobItem": {
+        "properties": {
+          "fileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "jobId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobid"
+          },
+          "jobStatus": {
+            "type": "string",
+            "title": "Jobstatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fileName",
+          "jobId",
+          "jobStatus"
+        ],
+        "title": "BatchStatusJobItem"
+      },
+      "BatchStatusResponse": {
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "title": "Batchid"
+          },
+          "batchStatus": {
+            "type": "string",
+            "title": "Batchstatus"
+          },
+          "totalJobs": {
+            "type": "integer",
+            "title": "Totaljobs"
+          },
+          "completed": {
+            "type": "integer",
+            "title": "Completed"
+          },
+          "inProgress": {
+            "type": "integer",
+            "title": "Inprogress"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/BatchStatusJobItem"
+            },
+            "type": "array",
+            "title": "Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "batchId",
+          "batchStatus",
+          "totalJobs",
+          "completed",
+          "inProgress",
+          "failed",
+          "createdAt",
+          "category",
+          "jobs"
+        ],
+        "title": "BatchStatusResponse"
+      },
+      "BatchUploadResponse": {
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "title": "Batchid"
+          },
+          "batchStatus": {
+            "type": "string",
+            "title": "Batchstatus"
+          },
+          "totalFiles": {
+            "type": "integer",
+            "title": "Totalfiles"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/BatchJobItem"
+            },
+            "type": "array",
+            "title": "Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "batchId",
+          "batchStatus",
+          "totalFiles",
+          "createdAt",
+          "jobs"
+        ],
+        "title": "BatchUploadResponse"
+      },
+      "BlueprintTestResult": {
+        "properties": {
+          "testId": {
+            "type": "string",
+            "title": "Testid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "documentType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documenttype"
+          },
+          "matchedBlueprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchedblueprint"
+          },
+          "matchedConfidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchedconfidence"
+          },
+          "extractedFields": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extractedfields"
+          },
+          "fieldConfidences": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Fieldconfidences"
+          },
+          "filteredFields": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Filteredfields"
+          },
+          "missingRequiredFields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missingrequiredfields"
+          },
+          "hasRules": {
+            "type": "boolean",
+            "title": "Hasrules",
+            "default": false
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "testId",
+          "status"
+        ],
+        "title": "BlueprintTestResult"
+      },
+      "BlueprintTestStartResponse": {
+        "properties": {
+          "testId": {
+            "type": "string",
+            "title": "Testid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "PROCESSING"
+          }
+        },
+        "type": "object",
+        "required": [
+          "testId"
+        ],
+        "title": "BlueprintTestStartResponse"
+      },
+      "Body_create_build_v1_builds_post": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Type of document being uploaded"
+          },
+          "external_document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Document Id",
+            "description": "External document identifier"
+          },
+          "external_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External System Id",
+            "description": "External system identifier"
+          },
+          "ai_consent_flag": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Consent Flag",
+            "description": "AI consent flag"
+          }
+        },
+        "type": "object",
+        "title": "Body_create_build_v1_builds_post"
+      },
+      "Body_create_document_v1_documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Type of document being uploaded"
+          },
+          "external_document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^[\\w.\\-/]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Document Id",
+            "description": "External document identifier"
+          },
+          "external_system_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[\\w.\\-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External System Id",
+            "description": "External system identifier"
+          },
+          "ai_consent_flag": {
+            "type": "boolean",
+            "title": "Ai Consent Flag",
+            "description": "Explicit AI processing consent. True = consent granted, processing proceeds normally. False = consent denied, document is stored but not processed.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_create_document_v1_documents_post"
+      },
+      "Body_create_document_wait_v1_documents_wait_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Type of document being uploaded"
+          },
+          "external_document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^[\\w.\\-/]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Document Id",
+            "description": "External document identifier"
+          },
+          "external_system_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[\\w.\\-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External System Id",
+            "description": "External system identifier"
+          },
+          "ai_consent_flag": {
+            "type": "boolean",
+            "title": "Ai Consent Flag",
+            "description": "Explicit AI processing consent. True = consent granted, processing proceeds normally. False = consent denied, document is stored but not processed.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_create_document_wait_v1_documents_wait_post"
+      },
+      "Body_create_presigned_upload_url_v1_documents_presigned_url_post": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Filename",
+            "description": "Original filename"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type",
+            "description": "MIME type of the file"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Type of document being uploaded"
+          },
+          "external_document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^[\\w.\\-/]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Document Id",
+            "description": "External document identifier"
+          },
+          "external_system_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[\\w.\\-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External System Id",
+            "description": "External system identifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "content_type"
+        ],
+        "title": "Body_create_presigned_upload_url_v1_documents_presigned_url_post"
+      },
+      "Body_start_blueprint_test_v1_admin_blueprints_test_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "document_category": {
+            "type": "string",
+            "title": "Document Category"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "document_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "document_category"
+        ],
+        "title": "Body_start_blueprint_test_v1_admin_blueprints_test_post"
+      },
+      "Body_upload_document_batch_v1_documents_batch_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "Documents to process"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "external_document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Document Id",
+            "description": "External document identifier (applied to all files in batch)"
+          },
+          "external_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External System Id",
+            "description": "External system identifier (applied to all files in batch)"
+          },
+          "ai_consent_flag": {
+            "type": "boolean",
+            "title": "Ai Consent Flag",
+            "description": "Explicit AI processing consent. True = consent granted, processing proceeds normally. False = consent denied, document is stored but not processed.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_document_batch_v1_documents_batch_post"
+      },
+      "Body_upload_document_build_page_v1_builds__build_id__pages_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "page_number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Number",
+            "description": "Page number (1-indexed)"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "title": "Overwrite",
+            "description": "Allow overwriting existing page",
+            "default": false
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Type of document being uploaded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_build_page_v1_builds__build_id__pages_post"
+      },
+      "Body_upload_document_build_pages_batch_v1_builds__build_id__pages_batch_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Type of document being uploaded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_document_build_pages_batch_v1_builds__build_id__pages_batch_post"
+      },
+      "Body_upload_zip_batch_v1_documents_batch_zip_post": {
+        "properties": {
+          "zip_file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Zip File",
+            "description": "ZIP file containing documents"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "external_document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Document Id",
+            "description": "External document identifier (applied to all files in batch)"
+          },
+          "external_system_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External System Id",
+            "description": "External system identifier (applied to all files in batch)"
+          },
+          "ai_consent_flag": {
+            "type": "boolean",
+            "title": "Ai Consent Flag",
+            "description": "Explicit AI processing consent. True = consent granted, processing proceeds normally. False = consent denied, document is stored but not processed.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "zip_file"
+        ],
+        "title": "Body_upload_zip_batch_v1_documents_batch_zip_post"
+      },
+      "BuildCreatedResponse": {
+        "properties": {
+          "buildId": {
+            "type": "string",
+            "title": "Buildid"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "buildId",
+          "message"
+        ],
+        "title": "BuildCreatedResponse"
+      },
+      "BuildDetailsResponse": {
+        "properties": {
+          "buildId": {
+            "type": "string",
+            "title": "Buildid"
+          },
+          "buildStatus": {
+            "type": "string",
+            "title": "Buildstatus"
+          },
+          "pageCount": {
+            "type": "integer",
+            "title": "Pagecount"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/BuildPageItem"
+            },
+            "type": "array",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "buildId",
+          "buildStatus",
+          "pageCount",
+          "pages"
+        ],
+        "title": "BuildDetailsResponse"
+      },
+      "BuildPageBatchItem": {
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "title": "Pagenumber"
+          },
+          "fileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pageNumber"
+        ],
+        "title": "BuildPageBatchItem"
+      },
+      "BuildPageItem": {
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "title": "Pagenumber"
+          },
+          "originalFileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalfilename"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pageNumber"
+        ],
+        "title": "BuildPageItem"
+      },
+      "BuildPageUploadResponse": {
+        "properties": {
+          "buildId": {
+            "type": "string",
+            "title": "Buildid"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "title": "Pagenumber"
+          },
+          "fileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "buildId",
+          "pageNumber",
+          "message"
+        ],
+        "title": "BuildPageUploadResponse"
+      },
+      "BuildPagesBatchResponse": {
+        "properties": {
+          "buildId": {
+            "type": "string",
+            "title": "Buildid"
+          },
+          "pagesAdded": {
+            "type": "integer",
+            "title": "Pagesadded"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/BuildPageBatchItem"
+            },
+            "type": "array",
+            "title": "Pages"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "buildId",
+          "pagesAdded",
+          "pages",
+          "message"
+        ],
+        "title": "BuildPagesBatchResponse"
+      },
+      "BuildSubmitAsyncResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "buildId": {
+            "type": "string",
+            "title": "Buildid"
+          },
+          "jobStatus": {
+            "type": "string",
+            "title": "Jobstatus"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "pageCount": {
+            "type": "integer",
+            "title": "Pagecount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "buildId",
+          "jobStatus",
+          "message",
+          "pageCount"
+        ],
+        "title": "BuildSubmitAsyncResponse"
+      },
+      "ChangeRoleRequest": {
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "super-admin",
+                  "tenant-admin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "description": "New role, or null to revoke (return user to pending)."
+          }
+        },
+        "type": "object",
+        "title": "ChangeRoleRequest"
+      },
+      "ChangeTenantRequest": {
+        "properties": {
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id",
+            "description": "New tenant, or null to clear."
+          }
+        },
+        "type": "object",
+        "title": "ChangeTenantRequest"
+      },
+      "ConfigResponse": {
+        "properties": {
+          "apiUrl": {
+            "type": "string",
+            "title": "Apiurl"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "imageTag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagetag"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "endpoints": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Endpoints"
+          },
+          "supportedFileTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supportedfiletypes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "apiUrl",
+          "version",
+          "imageTag",
+          "environment",
+          "endpoints",
+          "supportedFileTypes"
+        ],
+        "title": "ConfigResponse"
+      },
+      "CreateApiKeyRequest": {
+        "properties": {
+          "apiKeyName": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9-]+$",
+            "title": "Apikeyname"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment",
+            "default": "dev"
+          },
+          "emailAddress": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emailaddress"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "tenantId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenantid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "apiKeyName"
+        ],
+        "title": "CreateApiKeyRequest"
+      },
+      "CreateApiKeyResponse": {
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "title": "Apikey"
+          },
+          "apiKeyName": {
+            "type": "string",
+            "title": "Apikeyname"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "existingActiveKeys": {
+            "type": "integer",
+            "title": "Existingactivekeys",
+            "default": 0
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          }
+        },
+        "type": "object",
+        "required": [
+          "apiKey",
+          "apiKeyName",
+          "environment"
+        ],
+        "title": "CreateApiKeyResponse"
+      },
+      "CreateDocumentCategoryRequest": {
+        "properties": {
+          "categoryName": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_-]+$",
+            "title": "Categoryname"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Displayname"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoryName",
+          "displayName"
+        ],
+        "title": "CreateDocumentCategoryRequest"
+      },
+      "CreateTenantRequest": {
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[a-z0-9-]+$",
+            "title": "Tenantid"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Displayname"
+          },
+          "primaryContact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primarycontact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenantId",
+          "displayName"
+        ],
+        "title": "CreateTenantRequest"
+      },
+      "DeleteApiKeyResponse": {
+        "properties": {
+          "deactivated": {
+            "type": "boolean",
+            "title": "Deactivated"
+          },
+          "keyId": {
+            "type": "string",
+            "title": "Keyid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deactivated",
+          "keyId"
+        ],
+        "title": "DeleteApiKeyResponse"
+      },
+      "DeleteTenantResponse": {
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted"
+          },
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted",
+          "tenantId"
+        ],
+        "title": "DeleteTenantResponse"
+      },
+      "DictionaryBlueprintField": {
+        "type": "string",
+        "enum": [
+          "name",
+          "type",
+          "description",
+          "documentType"
+        ],
+        "title": "DictionaryBlueprintField"
+      },
+      "DictionaryFormatType": {
+        "type": "string",
+        "enum": [
+          "json",
+          "csv"
+        ],
+        "title": "DictionaryFormatType"
+      },
+      "DictionarySchemaListResponse": {
+        "properties": {
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Schemas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schemas"
+        ],
+        "title": "DictionarySchemaListResponse"
+      },
+      "DocumentCategory": {
+        "type": "string",
+        "enum": [
+          "income",
+          "expenses",
+          "identity",
+          "employment",
+          "training"
+        ],
+        "title": "DocumentCategory"
+      },
+      "DocumentCategoryItem": {
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "categoryName": {
+            "type": "string",
+            "title": "Categoryname"
+          },
+          "displayName": {
+            "type": "string",
+            "title": "Displayname"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "isActive": {
+            "type": "boolean",
+            "title": "Isactive",
+            "default": true
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenantId",
+          "categoryName",
+          "displayName"
+        ],
+        "title": "DocumentCategoryItem"
+      },
+      "DocumentDetail": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "fileName": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "apiKeyName": {
+            "type": "string",
+            "title": "Apikeyname"
+          },
+          "processStatus": {
+            "type": "string",
+            "title": "Processstatus"
+          },
+          "documentCategory": {
+            "type": "string",
+            "title": "Documentcategory"
+          },
+          "matchedBlueprint": {
+            "type": "string",
+            "title": "Matchedblueprint"
+          },
+          "matchedBlueprintConfidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchedblueprintconfidence"
+          },
+          "matchedDocumentClass": {
+            "type": "string",
+            "title": "Matcheddocumentclass"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "processedDate": {
+            "type": "string",
+            "title": "Processeddate"
+          },
+          "errorMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errormessage"
+          },
+          "contentType": {
+            "type": "string",
+            "title": "Contenttype"
+          },
+          "fileSizeBytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filesizebytes"
+          },
+          "pagesDetected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagesdetected"
+          },
+          "totalProcessingTimeSeconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Totalprocessingtimeseconds"
+          },
+          "bdaProcessingTimeSeconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bdaprocessingtimeseconds"
+          },
+          "bdaRegionUsed": {
+            "type": "string",
+            "title": "Bdaregionused"
+          },
+          "retryCount": {
+            "type": "integer",
+            "title": "Retrycount",
+            "default": 0
+          },
+          "fieldConfidenceScores": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fieldconfidencescores"
+          },
+          "externalDocumentId": {
+            "type": "string",
+            "title": "Externaldocumentid"
+          },
+          "batchId": {
+            "type": "string",
+            "title": "Batchid"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "fileName",
+          "tenantId",
+          "apiKeyName",
+          "processStatus",
+          "documentCategory",
+          "matchedBlueprint",
+          "matchedDocumentClass",
+          "createdAt",
+          "processedDate",
+          "contentType",
+          "bdaRegionUsed",
+          "externalDocumentId",
+          "batchId"
+        ],
+        "title": "DocumentDetail"
+      },
+      "DocumentListItem": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "fileName": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "apiKeyName": {
+            "type": "string",
+            "title": "Apikeyname"
+          },
+          "processStatus": {
+            "type": "string",
+            "title": "Processstatus"
+          },
+          "documentCategory": {
+            "type": "string",
+            "title": "Documentcategory"
+          },
+          "matchedBlueprint": {
+            "type": "string",
+            "title": "Matchedblueprint"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "processedDate": {
+            "type": "string",
+            "title": "Processeddate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "fileName",
+          "tenantId",
+          "apiKeyName",
+          "processStatus",
+          "documentCategory",
+          "matchedBlueprint",
+          "createdAt",
+          "processedDate"
+        ],
+        "title": "DocumentListItem"
+      },
+      "DocumentListResponse": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentListItem"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "count"
+        ],
+        "title": "DocumentListResponse"
+      },
+      "DocumentSearchRequest": {
+        "properties": {
+          "jobIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Jobids"
+          },
+          "includeExtractedData": {
+            "type": "boolean",
+            "title": "Includeextracteddata",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobIds"
+        ],
+        "title": "DocumentSearchRequest"
+      },
+      "DocumentSearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/JobStatusResponse"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "DocumentSearchResponse"
+      },
+      "ExtractionRuleDeleteResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ExtractionRuleDeleteResponse"
+      },
+      "ExtractionRuleItem": {
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "documentType": {
+            "type": "string",
+            "title": "Documenttype"
+          },
+          "requiredFields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requiredfields"
+          },
+          "optionalFields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Optionalfields"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenantId",
+          "documentType",
+          "requiredFields",
+          "optionalFields",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ExtractionRuleItem"
+      },
+      "ExtractionRuleRequest": {
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "title": "Document Type",
+            "description": "Document type this rule applies to"
+          },
+          "required_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Fields",
+            "description": "Fields that must be present"
+          },
+          "optional_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Optional Fields",
+            "description": "Fields that may be present"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id",
+            "description": "Target tenant. Required for super-admins; ignored for tenant-admins."
+          },
+          "blueprint_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blueprint Arn",
+            "description": "BDA blueprint ARN for stable reference across renames."
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_type",
+          "required_fields"
+        ],
+        "title": "ExtractionRuleRequest",
+        "description": "Request body for creating/updating an extraction rule."
+      },
+      "ExtractionRulesListResponse": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractionRuleItem"
+            },
+            "type": "array",
+            "title": "Rules"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "ExtractionRulesListResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "HealthResponse"
+      },
+      "JobStatusResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "jobStatus": {
+            "type": "string",
+            "title": "Jobstatus"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completedat"
+          },
+          "totalProcessingTimeSeconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Totalprocessingtimeseconds"
+          },
+          "matchedDocumentClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matcheddocumentclass"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "additionalInfo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additionalinfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "jobStatus",
+          "message"
+        ],
+        "title": "JobStatusResponse"
+      },
+      "ListApiKeysResponse": {
+        "properties": {
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/ApiKeyItem"
+            },
+            "type": "array",
+            "title": "Keys"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys",
+          "count"
+        ],
+        "title": "ListApiKeysResponse"
+      },
+      "ListDocumentCategoriesResponse": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentCategoryItem"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categories",
+          "count"
+        ],
+        "title": "ListDocumentCategoriesResponse"
+      },
+      "ListTenantsResponse": {
+        "properties": {
+          "tenants": {
+            "items": {
+              "$ref": "#/components/schemas/TenantItem"
+            },
+            "type": "array",
+            "title": "Tenants"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenants",
+          "count"
+        ],
+        "title": "ListTenantsResponse"
+      },
+      "MeResponse": {
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "principal": {
+            "type": "string",
+            "title": "Principal"
+          },
+          "authMethod": {
+            "type": "string",
+            "enum": [
+              "api_key",
+              "jwt"
+            ],
+            "title": "Authmethod"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenantId",
+          "principal",
+          "authMethod"
+        ],
+        "title": "MeResponse"
+      },
+      "MetricsGranularity": {
+        "type": "string",
+        "enum": [
+          "daily",
+          "monthly"
+        ],
+        "title": "MetricsGranularity"
+      },
+      "MetricsResponse": {
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "title": "Startdate"
+          },
+          "endDate": {
+            "type": "string",
+            "title": "Enddate"
+          },
+          "granularity": {
+            "type": "string",
+            "title": "Granularity"
+          },
+          "dailyStats": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PeriodStats"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dailystats"
+          },
+          "monthlyStats": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PeriodStats"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthlystats"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/MetricsSummary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "startDate",
+          "endDate",
+          "granularity",
+          "summary"
+        ],
+        "title": "MetricsResponse"
+      },
+      "MetricsSummary": {
+        "properties": {
+          "totalRecords": {
+            "type": "integer",
+            "title": "Totalrecords",
+            "default": 0
+          },
+          "totalBdaInvocations": {
+            "type": "integer",
+            "title": "Totalbdainvocations",
+            "default": 0
+          },
+          "byStatus": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Bystatus"
+          },
+          "byClassification": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Byclassification"
+          },
+          "byResponseCode": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Byresponsecode"
+          },
+          "timingStats": {
+            "$ref": "#/components/schemas/TimingStats",
+            "default": {
+              "totalProcessingTimeAvg": 0.0,
+              "totalProcessingTimeSum": 0.0,
+              "totalProcessingTimeCount": 0,
+              "bdaProcessingTimeAvg": 0.0,
+              "bdaProcessingTimeSum": 0.0,
+              "bdaProcessingTimeCount": 0,
+              "bdaWaitTimeAvg": 0.0,
+              "bdaWaitTimeSum": 0.0,
+              "bdaWaitTimeCount": 0
+            }
+          }
+        },
+        "type": "object",
+        "title": "MetricsSummary"
+      },
+      "PeriodStats": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "title": "Totalrecords",
+            "default": 0
+          },
+          "totalBdaInvocations": {
+            "type": "integer",
+            "title": "Totalbdainvocations",
+            "default": 0
+          },
+          "byStatus": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Bystatus"
+          },
+          "byClassification": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Byclassification"
+          },
+          "byResponseCode": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Byresponsecode"
+          },
+          "timingStats": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Timingstats"
+          }
+        },
+        "type": "object",
+        "title": "PeriodStats"
+      },
+      "PresignedUploadResponse": {
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "title": "Uploadurl"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method",
+            "default": "POST"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fields"
+          },
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "title": "Expiresin"
+          },
+          "maxSizeBytes": {
+            "type": "integer",
+            "title": "Maxsizebytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uploadUrl",
+          "fields",
+          "jobId",
+          "expiresIn",
+          "maxSizeBytes"
+        ],
+        "title": "PresignedUploadResponse"
+      },
+      "TenantItem": {
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "title": "Tenantid"
+          },
+          "displayName": {
+            "type": "string",
+            "title": "Displayname"
+          },
+          "primaryContact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primarycontact"
+          },
+          "isActive": {
+            "type": "boolean",
+            "title": "Isactive",
+            "default": true
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenantId",
+          "displayName"
+        ],
+        "title": "TenantItem"
+      },
+      "TimingStats": {
+        "properties": {
+          "totalProcessingTimeAvg": {
+            "type": "number",
+            "title": "Totalprocessingtimeavg",
+            "default": 0
+          },
+          "totalProcessingTimeSum": {
+            "type": "number",
+            "title": "Totalprocessingtimesum",
+            "default": 0
+          },
+          "totalProcessingTimeCount": {
+            "type": "integer",
+            "title": "Totalprocessingtimecount",
+            "default": 0
+          },
+          "bdaProcessingTimeAvg": {
+            "type": "number",
+            "title": "Bdaprocessingtimeavg",
+            "default": 0
+          },
+          "bdaProcessingTimeSum": {
+            "type": "number",
+            "title": "Bdaprocessingtimesum",
+            "default": 0
+          },
+          "bdaProcessingTimeCount": {
+            "type": "integer",
+            "title": "Bdaprocessingtimecount",
+            "default": 0
+          },
+          "bdaWaitTimeAvg": {
+            "type": "number",
+            "title": "Bdawaittimeavg",
+            "default": 0
+          },
+          "bdaWaitTimeSum": {
+            "type": "number",
+            "title": "Bdawaittimesum",
+            "default": 0
+          },
+          "bdaWaitTimeCount": {
+            "type": "integer",
+            "title": "Bdawaittimecount",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "TimingStats"
+      },
+      "UpdateDocumentCategoryRequest": {
+        "properties": {
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "isActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isactive"
+          }
+        },
+        "type": "object",
+        "title": "UpdateDocumentCategoryRequest"
+      },
+      "UpdateTenantRequest": {
+        "properties": {
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "primaryContact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primarycontact"
+          },
+          "isActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isactive"
+          }
+        },
+        "type": "object",
+        "title": "UpdateTenantRequest"
+      },
+      "UploadAsyncResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "jobStatus": {
+            "type": "string",
+            "title": "Jobstatus"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "jobStatus",
+          "message"
+        ],
+        "title": "UploadAsyncResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "API-Key"
+      },
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

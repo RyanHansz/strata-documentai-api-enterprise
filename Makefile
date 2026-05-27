@@ -27,7 +27,10 @@ deploy-ui: ## Build admin UI and sync to S3 + invalidate CloudFront
 		--exclude "node_modules/*" \
 		--exclude "package*.json" \
 		--exclude ".gitignore" \
-		--exclude "js/*" \
+		--exclude "src/*" \
+		--exclude "tests/*" \
+		--exclude "e2e/*" \
+		--exclude "test-results/*" \
 		--exclude "LICENSE" \
 		--exclude "README.md" \
 		--exclude "config.example.json" \
