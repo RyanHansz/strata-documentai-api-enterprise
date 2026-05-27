@@ -126,11 +126,10 @@ class DocumentCategory(StrEnum):
 
 
 class FileValidation:
-    BDA_NATIVE = (
+    NO_CONVERSION_NEEDED = (
         "application/pdf",
         "image/jpeg",
         "image/png",
-        "image/tiff",
     )
 
     REQUIRES_CONVERSION = (
@@ -139,14 +138,14 @@ class FileValidation:
         "image/heif",
         "image/webp",
         "image/gif",
+        "image/tiff",
     )
 
-    SUPPORTED_CONTENT_TYPES = BDA_NATIVE + REQUIRES_CONVERSION
+    SUPPORTED_CONTENT_TYPES = NO_CONVERSION_NEEDED + REQUIRES_CONVERSION
 
     GRAYSCALE_CONVERTIBLE = (
         "image/jpeg",
         "image/png",
-        "image/tiff",
     )
 
     @staticmethod
@@ -274,19 +273,61 @@ class DocumentBuildStatus(StrEnum):
     COMPLETED = "completed"
 
 
+class PreclassificationCategory(StrEnum):
+    TAX_DOCUMENTS = "tax_documents"
+    EMPLOYMENT_WAGES = "employment_wages"
+    INDEPENDENT_EARNINGS = "independent_earnings"
+    GOVERNMENT_BENEFITS = "government_benefits"
+    PRIVATE_BENEFITS_AND_SETTLEMENTS = "private_benefits_and_settlements"
+    COURT_ORDERED_BENEFITS = "court_ordered_benefits"
+    FINANCIAL_ASSETS = "financial_assets"
+    RECEIPTS_AND_INVOICES = "receipts_and_invoices"
+    RECURRING_BILLS = "recurring_bills"
+    HOUSING_EXPENSES = "housing_expenses"
+    DEBT_OBLIGATIONS = "debt_obligations"
+    IDENTITY_VERIFICATION = "identity_verification"
+    RIGHT_TO_WORK = "right_to_work"
+    SYSTEM_REJECT = "system_reject"
+
+
 class PreClassificationDefaults:
     MODEL_ID = "us.amazon.nova-lite-v1:0"
+    # Converse API supports more document types (csv, html, txt, md, docx, xlsx)
+    # but those are rejected at the upload layer before reaching preclassification.
+    SUPPORTED_CONTENT_TYPES = (
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/pdf",
+    )
     PROMPT = "\n".join(
         [
-            "Analyze this image. Respond in JSON only:",
+            "Classify this document into one of the categories below. Respond in JSON only:",
             '{"document_type": "string", "confidence": float 0-1, "document_count": int, "is_blurry": bool}',
-            "ONLY use one of these exact values for document_type: <<DOCUMENT_TYPES>>",
+            "",
+            "Categories and their document types:",
+            "- tax_documents: W-2, 1040, 1099-INT, 1099-MISC, 1099-G",
+            "- employment_wages: Paystubs, payslips, earnings statements",
+            "- independent_earnings: Gig platform summaries (Uber, DoorDash, Etsy), freelance 1099-NEC",
+            "- government_benefits: Social Security letters (SSI/SSDI), unemployment award letters",
+            "- private_benefits_and_settlements: Pension statements, life insurance payouts, annuities",
+            "- court_ordered_benefits: Child support orders, alimony decrees, divorce agreements",
+            "- financial_assets: Bank statements, 401(k) summaries, brokerage statements",
+            "- receipts_and_invoices: Point-of-sale receipts, vendor invoices",
+            "- recurring_bills: Electric, water, gas, phone, internet, insurance bills",
+            "- housing_expenses: Rental leases, landlord payment ledgers, HOA letters",
+            "- debt_obligations: Mortgage statements, auto loan bills, student loans, credit card statements",
+            "- identity_verification: Driver's license, passport, state ID, Global Entry card",
+            "- right_to_work: Form I-9, work permits, EAD cards, visa stamps",
+            "- system_reject: Blurry photos, blank pages, corrupted files, non-document images",
+            "",
+            "ONLY use one of the exact category names listed above for document_type.",
             "Do not create new categories. If unsure, use 'other_document'.",
-            "If the image is a photograph, scenery, artwork, or contains no structured text, use 'not_a_document'.",
-            "Use 'other_document' ONLY for documents that don't match any listed type.",
-            "Set is_blurry to true ONLY if the image appears out of focus, smeared, or motion-blurred.",
-            "If is_blurry is true, set confidence below 0.5.",
-            "document_count: how many separate documents are visible in this image?",
+            "Use 'system_reject' for blurry, blank, corrupted, or non-document images.",
+            "Set is_blurry to true ONLY if the document appears out of focus, smeared, or motion-blurred.",
+            "If is_blurry is true, set confidence below 0.5 and use 'system_reject'.",
+            "document_count: how many separate documents are visible?",
         ]
     )
 

@@ -68,36 +68,82 @@ variable "bda_projects" {
   type = map(object({
     managed_blueprint_arns = list(string)
   }))
-  description = "Map of BDA projects by document category, each with its own managed blueprint ARNs"
+  description = "Map of BDA projects by preclassification category, each with its own managed blueprint ARNs"
   default = {
-    income = {
+    tax_documents = {
       managed_blueprint_arns = [
-        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-bank-statement",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-w2-form",
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-form-1040",
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-form-1099-int",
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-form-1099-misc",
-        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-payslip",
-        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-w2-form",
       ]
     }
-    expenses = {
+    employment_wages = {
+      managed_blueprint_arns = [
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-payslip",
+      ]
+    }
+    independent_earnings = {
+      managed_blueprint_arns = [
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-invoice",
+      ]
+    }
+    government_benefits = {
+      managed_blueprint_arns = []
+    }
+    private_benefits_and_settlements = {
+      managed_blueprint_arns = []
+    }
+    court_ordered_benefits = {
+      managed_blueprint_arns = []
+    }
+    financial_assets = {
+      managed_blueprint_arns = [
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-bank-statement",
+      ]
+    }
+    receipts_and_invoices = {
       managed_blueprint_arns = [
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-invoice",
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-receipt",
       ]
     }
-    identity = {
+    recurring_bills = {
+      managed_blueprint_arns = []
+    }
+    housing_expenses = {
+      managed_blueprint_arns = []
+    }
+    debt_obligations = {
+      managed_blueprint_arns = []
+    }
+    identity_verification = {
       managed_blueprint_arns = [
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-us-driver-license",
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-us-passport",
         "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-birth-certificate",
       ]
     }
-    employment = {
+    right_to_work = {
       managed_blueprint_arns = []
     }
-    training = {
-      managed_blueprint_arns = []
+    # Note: BDA has a limit of 40 blueprints per project (as of 2025).
+    # The "all" project combines every managed and custom blueprint.
+    # Monitor total count if adding more custom blueprints.
+    all = {
+      managed_blueprint_arns = [
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-w2-form",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-form-1040",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-form-1099-int",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-form-1099-misc",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-payslip",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-invoice",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-receipt",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-bank-statement",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-us-driver-license",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-us-passport",
+        "arn:aws:bedrock:us-east-1:aws:blueprint/bedrock-data-automation-public-birth-certificate",
+      ]
     }
   }
 }

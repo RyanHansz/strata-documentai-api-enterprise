@@ -12,10 +12,12 @@ def test_invoke_bedrock_data_automation_single_page():
             "os.environ",
             {
                 "BDA_PROJECT_ARN": "arn:aws:project",
+                "BDA_PROJECT_ARN_ALL": "arn:aws:project",
                 "BDA_PROFILE_ARN": "arn:aws:profile",
                 "DOCUMENTAI_OUTPUT_LOCATION": "s3://output-bucket/path",
             },
         ),
+        patch.object(bda_invoker_util, "_project_arns_cache", None),
         patch(
             "documentai_api.utils.bda_invoker.AWSClientFactory.get_bda_runtime_client"
         ) as mock_get_bda_client,
@@ -33,7 +35,9 @@ def test_invoke_bedrock_data_automation_single_page():
 
         result = bda_invoker_util.invoke_bedrock_data_automation("test-bucket", "test.pdf")
 
-        assert result == bda_invocation_arn
+        invocation_arn, project_arn = result
+        assert invocation_arn == bda_invocation_arn
+        assert project_arn == "arn:aws:project"
         mock_bda.invoke_data_automation_async.assert_called_once()
 
 
@@ -45,10 +49,12 @@ def test_invoke_bedrock_data_automation_document_truncation():
             "os.environ",
             {
                 "BDA_PROJECT_ARN": "arn:aws:project",
+                "BDA_PROJECT_ARN_ALL": "arn:aws:project",
                 "BDA_PROFILE_ARN": "arn:aws:profile",
                 "DOCUMENTAI_OUTPUT_LOCATION": "s3://output-bucket/path",
             },
         ),
+        patch.object(bda_invoker_util, "_project_arns_cache", None),
         patch(
             "documentai_api.utils.bda_invoker.AWSClientFactory.get_bda_runtime_client"
         ) as mock_get_bda_client,
@@ -69,7 +75,9 @@ def test_invoke_bedrock_data_automation_document_truncation():
 
         result = bda_invoker_util.invoke_bedrock_data_automation("test-bucket", "test.pdf")
 
-        assert result == bda_invocation_arn
+        invocation_arn, project_arn = result
+        assert invocation_arn == bda_invocation_arn
+        assert project_arn == "arn:aws:project"
         mock_truncate.assert_called_once_with(
             b"file_content", max_pages=int(ConfigDefaults.MAX_PAGES_PER_DOCUMENT)
         )

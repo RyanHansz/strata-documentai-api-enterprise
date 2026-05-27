@@ -71,12 +71,12 @@ async def create_presigned_upload_url(
     The returned URL and fields should be used to construct a multipart/form-data
     POST request to S3. S3 enforces content-type and size limits via the POST policy.
     """
-    if content_type not in FileValidation.BDA_NATIVE:
+    if content_type not in FileValidation.NO_CONVERSION_NEEDED:
         raise HTTPException(
             status_code=400,
             detail=(
                 f"Presigned uploads only support BDA-native formats: "
-                f"{', '.join(FileValidation.BDA_NATIVE)}. "
+                f"{', '.join(FileValidation.NO_CONVERSION_NEEDED)}. "
                 f"For '{content_type}', use the direct upload endpoint (POST /v1/documents) "
                 f"which handles format conversion automatically."
             ),

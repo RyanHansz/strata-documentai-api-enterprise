@@ -28,11 +28,10 @@ def mock_preclassification(mocker):
     from documentai_api.utils.dto import BedrockClassificationResult
 
     mocker.patch("documentai_api.utils.ddb.get_bda_percentage", return_value=1.0)
-    mocker.patch("documentai_api.utils.ddb.get_all_schemas", return_value={"W2": {}, "Payslip": {}})
     mocker.patch(
-        "documentai_api.utils.ddb.preclassify_document_image",
+        "documentai_api.utils.ddb.preclassify_document",
         return_value=BedrockClassificationResult(
-            document_type="W2",
+            document_type="tax_documents",
             confidence=0.95,
             document_count=1,
             is_document=True,
@@ -199,14 +198,18 @@ def test_invoke_bda_success(input_pdf, mocker):
     mock_low_level_invoke = mocker.patch(
         "documentai_api.jobs.document_processor.main.invoke_bedrock_data_automation"
     )
-    mock_low_level_invoke.return_value = "arn:aws:bedrock:us-east-1:123456789012:job/abc123"
+    mock_low_level_invoke.return_value = (
+        "arn:aws:bedrock:us-east-1:123456789012:job/abc123",
+        "arn:aws:bedrock:us-east-1:123456789012:project/test",
+    )
 
-    result = invoke_bda(input_pdf.bucket_name, input_pdf.key, "test.pdf")
+    result = invoke_bda(input_pdf.bucket_name, input_pdf.key, "test.pdf", "tax_documents")
 
     assert result["invocationArn"] == "arn:aws:bedrock:us-east-1:123456789012:job/abc123"
     mock_set_status.assert_called_once_with(
         object_key="test.pdf",
         bda_invocation_arn="arn:aws:bedrock:us-east-1:123456789012:job/abc123",
+        bda_project_arn_used="arn:aws:bedrock:us-east-1:123456789012:project/test",
     )
 
 
@@ -244,7 +247,9 @@ def test_main_first_time_pdf(input_pdf, mocker, ddb_doc_metadata_table, mock_inv
     doc_meta_record = ddb_doc_metadata_table.get_item(Key={"fileName": expected_object_key})["Item"]
     assert doc_meta_record[DocumentMetadata.PROCESS_STATUS] == ProcessStatus.NOT_STARTED
 
-    mock_invoke.assert_called_once_with(input_pdf.bucket_name, input_pdf.key, expected_object_key)
+    mock_invoke.assert_called_once_with(
+        input_pdf.bucket_name, input_pdf.key, expected_object_key, "tax_documents"
+    )
 
 
 def test_main_first_time_image(input_image, mocker, ddb_doc_metadata_table, mock_invoke):
@@ -263,7 +268,7 @@ def test_main_first_time_image(input_image, mocker, ddb_doc_metadata_table, mock
 
     mock_convert.assert_called_once_with(input_image.bucket_name, input_image.key)
     mock_invoke.assert_called_once_with(
-        input_image.bucket_name, input_image.key, expected_object_key
+        input_image.bucket_name, input_image.key, expected_object_key, "tax_documents"
     )
 
 
@@ -306,7 +311,9 @@ def test_main_uses_env_bucket_when_not_provided(input_pdf, mocker, mock_invoke):
     """Test bucket name defaults to environment variable."""
     main(input_pdf.key)
 
-    mock_invoke.assert_called_once_with(input_pdf.bucket_name, input_pdf.key, "test.pdf")
+    mock_invoke.assert_called_once_with(
+        input_pdf.bucket_name, input_pdf.key, "test.pdf", "tax_documents"
+    )
 
 
 def test_main_idempotent_on_duplicate_events(input_pdf, mocker, mock_invoke):

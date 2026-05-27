@@ -114,7 +114,7 @@ exclude_lines = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-m 'not audit'"
+addopts = "-m 'not audit and not integration'"
 markers = [
     "audit: mark a test as a security audit log test, to be run isolated from other tests",
     "integration: tests that use moto or real external services",

@@ -45,8 +45,7 @@ locals {
   service_name = "${var.project_name}-${var.environment}-${local.account_id}"
 
   # SSM
-  ssm_prefix                    = "/${var.project_name}/${var.environment}"
-  ssm_classification_prompt_key = "bedrock-classification-prompt"
+  ssm_prefix = "/${var.project_name}/${var.environment}"
 
   # Glue — table name comes from analytics module output
 
@@ -271,17 +270,7 @@ module "config" {
   prefix = local.ssm_prefix
 
   parameters = {
-    (local.ssm_classification_prompt_key) = join("\n", [
-      "Analyze this image. Respond in JSON only:",
-      "{\"document_type\": \"string\", \"confidence\": float 0-1, \"document_count\": int, \"is_blurry\": bool}",
-      "ONLY use one of these exact values for document_type: <<DOCUMENT_TYPES>>",
-      "Do not create new categories. If unsure, use 'other_document'.",
-      "If the image is a photograph, scenery, artwork, or contains no structured text, use 'not_a_document'.",
-      "Use 'other_document' ONLY for documents that don't match any listed type.",
-      "Set is_blurry to true ONLY if the image appears out of focus, smeared, or motion-blurred.",
-      "If is_blurry is true, set confidence below 0.5.",
-      "document_count: how many separate documents are visible in this image?",
-    ])
+    "feature-flags/preclassification-based-routing" = "false"
   }
 }
 
@@ -332,8 +321,10 @@ module "bedrock_data_automation" {
   name = "${local.service_name}-${each.key}"
 
   blueprints = concat(
-    # Custom document type schemas from category folder
-    [for f in fileset("${path.module}/../../custom-document-types/${each.key}", "*.json") : "${path.module}/../../custom-document-types/${each.key}/${f}"],
+    # Custom document type schemas — "all" project gets every custom blueprint
+    each.key == "all"
+    ? [for f in fileset("${path.module}/../../custom-document-types", "*/*.json") : "${path.module}/../../custom-document-types/${f}"]
+    : [for f in fileset("${path.module}/../../custom-document-types/${each.key}", "*.json") : "${path.module}/../../custom-document-types/${each.key}/${f}"],
     # AWS managed blueprints for this category
     each.value.managed_blueprint_arns,
   )
@@ -421,6 +412,7 @@ locals {
 
   lambda_env_vars = {
     ENVIRONMENT                                             = var.environment
+    PRECLASSIFICATION_ROUTING_PARAM                         = "${local.ssm_prefix}/feature-flags/preclassification-based-routing"
     DOCUMENTAI_DOCUMENT_METADATA_TABLE_NAME                 = module.document_metadata.table_name
     DOCUMENTAI_DOCUMENT_METADATA_JOB_ID_INDEX_NAME          = local.gsi_job_id
     DOCUMENTAI_DOCUMENT_METADATA_EXTERNAL_DOC_ID_INDEX_NAME = local.gsi_external_document_id
@@ -439,12 +431,23 @@ locals {
     DDB_RAW_DATA_TABLE_NAME                                 = module.analytics.raw_metrics_table_name
     GLUE_DATABASE_NAME                                      = module.analytics.database_name
     ATHENA_WORKGROUP_NAME                                   = module.analytics.workgroup_name
-    BDA_PROJECT_ARNS                                        = jsonencode({ for k, v in module.bedrock_data_automation : k => v.project_arn })
-    BDA_PROFILE_ARNS                                        = jsonencode({ for k, v in module.bedrock_data_automation : k => v.profile_arn })
-    BDA_PROJECT_ARN                                         = module.bedrock_data_automation["income"].project_arn
-    BDA_PROFILE_ARN                                         = module.bedrock_data_automation["income"].profile_arn
+    BDA_PROJECT_ARN_TAX_DOCUMENTS                           = module.bedrock_data_automation["tax_documents"].project_arn
+    BDA_PROJECT_ARN_EMPLOYMENT_WAGES                        = module.bedrock_data_automation["employment_wages"].project_arn
+    BDA_PROJECT_ARN_INDEPENDENT_EARNINGS                    = module.bedrock_data_automation["independent_earnings"].project_arn
+    BDA_PROJECT_ARN_GOVERNMENT_BENEFITS                     = module.bedrock_data_automation["government_benefits"].project_arn
+    BDA_PROJECT_ARN_PRIVATE_BENEFITS_AND_SETTLEMENTS        = module.bedrock_data_automation["private_benefits_and_settlements"].project_arn
+    BDA_PROJECT_ARN_COURT_ORDERED_BENEFITS                  = module.bedrock_data_automation["court_ordered_benefits"].project_arn
+    BDA_PROJECT_ARN_FINANCIAL_ASSETS                        = module.bedrock_data_automation["financial_assets"].project_arn
+    BDA_PROJECT_ARN_RECEIPTS_AND_INVOICES                   = module.bedrock_data_automation["receipts_and_invoices"].project_arn
+    BDA_PROJECT_ARN_RECURRING_BILLS                         = module.bedrock_data_automation["recurring_bills"].project_arn
+    BDA_PROJECT_ARN_HOUSING_EXPENSES                        = module.bedrock_data_automation["housing_expenses"].project_arn
+    BDA_PROJECT_ARN_DEBT_OBLIGATIONS                        = module.bedrock_data_automation["debt_obligations"].project_arn
+    BDA_PROJECT_ARN_IDENTITY_VERIFICATION                   = module.bedrock_data_automation["identity_verification"].project_arn
+    BDA_PROJECT_ARN_RIGHT_TO_WORK                           = module.bedrock_data_automation["right_to_work"].project_arn
+    BDA_PROJECT_ARN_ALL                                     = module.bedrock_data_automation["all"].project_arn
+    BDA_PROJECT_ARN                                         = module.bedrock_data_automation["all"].project_arn
+    BDA_PROFILE_ARN                                         = module.bedrock_data_automation["all"].profile_arn
     BDA_REGION                                              = var.bda_region
-    BEDROCK_CLASSIFICATION_PROMPT_PARAM                     = "${local.ssm_prefix}/${local.ssm_classification_prompt_key}"
     BEDROCK_CLASSIFICATION_MODEL_ID                         = "us.amazon.nova-lite-v1:0"
     SSM_PREFIX                                              = local.ssm_prefix
     MAX_BDA_INVOKE_RETRY_ATTEMPTS                           = local.max_bda_invoke_retry_attempts

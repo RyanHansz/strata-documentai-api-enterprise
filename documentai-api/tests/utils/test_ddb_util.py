@@ -454,8 +454,8 @@ def test_upsert_ddb(ddb_doc_metadata_table, mocker):
     assert item[DocumentMetadata.IS_PASSWORD_PROTECTED] is True
     assert item[DocumentMetadata.IS_DOCUMENT_BLURRY] is False
     assert DocumentMetadata.RESPONSE_JSON in item
-    assert item[DocumentMetadata.PRE_CLASSIFICATION_DOCUMENT_TYPE] == "W2"
-    assert item[DocumentMetadata.PRE_CLASSIFICATION_CONFIDENCE] == Decimal("0.98")
+    assert item[DocumentMetadata.PRECLASSIFICATION_CATEGORY] == "W2"
+    assert item[DocumentMetadata.PRECLASSIFICATION_CONFIDENCE] == Decimal("0.98")
 
     # external fields
     assert item[DocumentMetadata.EXTERNAL_DOCUMENT_ID] == "ext-doc-789"
@@ -576,12 +576,11 @@ def test_upsert_initial_ddb_record(
         "documentai_api.utils.ddb.document_utils.is_password_protected",
         return_value=is_password_protected,
     )
-    mock_preclassify = mocker.patch("documentai_api.utils.ddb.preclassify_document_image")
+    mock_preclassify = mocker.patch("documentai_api.utils.ddb.preclassify_document")
     if preclassify_result:
         mock_preclassify.return_value = preclassify_result
 
     mocker.patch("documentai_api.utils.ddb.get_bda_percentage", return_value=1.0)
-    mocker.patch("documentai_api.utils.ddb.get_all_schemas", return_value={"W2": {}, "Payslip": {}})
     mocker.patch(
         "documentai_api.utils.ddb.build_v1_api_response", return_value={"status": "completed"}
     )
@@ -614,10 +613,7 @@ def test_upsert_initial_ddb_record(
     assert DocumentMetadata.UPDATED_AT in item
 
     if preclassify_result:
-        assert (
-            item[DocumentMetadata.PRE_CLASSIFICATION_DOCUMENT_TYPE]
-            == preclassify_result.document_type
-        )
+        assert item[DocumentMetadata.PRECLASSIFICATION_CATEGORY] == preclassify_result.document_type
 
     if has_internal_response:
         assert DocumentMetadata.RESPONSE_JSON in item
@@ -630,13 +626,16 @@ def test_set_bda_processing_status_started(mocker):
     """Test setting BDA status to started."""
     mock_update = mocker.patch("documentai_api.utils.ddb.update_ddb")
 
-    ddb_util.set_bda_processing_status_started("test-file", "arn:aws:bda:us-east-1:123:job/1")
+    ddb_util.set_bda_processing_status_started(
+        "test-file", "arn:aws:bda:us-east-1:123:job/1", "arn:aws:project/123"
+    )
 
     mock_update.assert_called_once_with(
         object_key="test-file",
         status=ProcessStatus.STARTED,
         internal_api_response=None,
         bda_invocation_arn="arn:aws:bda:us-east-1:123:job/1",
+        bda_project_arn_used="arn:aws:project/123",
     )
 
 

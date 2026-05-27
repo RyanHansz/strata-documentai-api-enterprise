@@ -5,6 +5,7 @@ class DocumentMetadata:
     USER_PROVIDED_DOCUMENT_CATEGORY = "userProvidedDocumentCategory"
     PROCESS_STATUS = "processStatus"
     BDA_INVOCATION_ARN = "bdaInvocationArn"
+    BDA_PROJECT_ARN_USED = "bdaProjectArn"
     BDA_OUTPUT_S3_URI = "bdaOutputS3Uri"
     ERROR_MESSAGE = "errorMessage"
     RESPONSE_JSON = "responseJson"
@@ -24,8 +25,8 @@ class DocumentMetadata:
     UPDATED_AT = "updatedAt"
 
     # preclassification fields
-    PRE_CLASSIFICATION_DOCUMENT_TYPE = "preClassificationDocumentType"
-    PRE_CLASSIFICATION_CONFIDENCE = "preClassificationConfidence"
+    PRECLASSIFICATION_CATEGORY = "preclassificationCategory"
+    PRECLASSIFICATION_CONFIDENCE = "preclassificationConfidence"
 
     # performance tracking
     BDA_STARTED_AT = "bdaStartedAt"

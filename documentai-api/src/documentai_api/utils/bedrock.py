@@ -4,6 +4,7 @@ from typing import Any
 
 from documentai_api.config.constants import (
     ConfigDefaults,
+    PreclassificationCategory,
     PreClassificationDefaults,
 )
 from documentai_api.config.env import get_aws_config
@@ -16,6 +17,7 @@ logger = get_logger(__name__)
 
 DEFAULT_PRECLASSIFICATION_MODEL_ID = PreClassificationDefaults.MODEL_ID
 DEFAULT_PRECLASSIFICATION_PROMPT = PreClassificationDefaults.PROMPT
+SUPPORTED_CLASSIFICATION_TYPES = PreClassificationDefaults.SUPPORTED_CONTENT_TYPES
 
 
 def _get_model_id() -> str:
@@ -25,13 +27,11 @@ def _get_model_id() -> str:
     return get_parameter_value(param_name, default=DEFAULT_PRECLASSIFICATION_MODEL_ID)
 
 
-def _get_classification_prompt(document_types: list[str]) -> str:
+def _get_classification_prompt() -> str:
     param_name = get_aws_config().bedrock_classification_prompt_param
     if not param_name:
-        template = DEFAULT_PRECLASSIFICATION_PROMPT
-    else:
-        template = get_parameter_value(param_name, default=DEFAULT_PRECLASSIFICATION_PROMPT)
-    return template.replace("<<DOCUMENT_TYPES>>", json.dumps(document_types))
+        return DEFAULT_PRECLASSIFICATION_PROMPT
+    return get_parameter_value(param_name, default=DEFAULT_PRECLASSIFICATION_PROMPT)
 
 
 def _invoke(messages: list[Any], max_tokens: int = 256) -> Any:
@@ -40,30 +40,37 @@ def _invoke(messages: list[Any], max_tokens: int = 256) -> Any:
     return invoke_model(model_id=model_id, messages=messages, max_tokens=max_tokens)
 
 
-def preclassify_document_image(
-    image_bytes: bytes, content_type: str, document_types: list[str]
-) -> BedrockClassificationResult:
+def preclassify_document(document_bytes: bytes, content_type: str) -> BedrockClassificationResult:
     """Classify document type and count using Bedrock vision model."""
-    if not content_type.startswith("image/"):
-        logger.info(f"Non-image content type, skipping classification: {content_type}")
+    if content_type not in SUPPORTED_CLASSIFICATION_TYPES:
+        logger.info(f"Unsupported content type for classification: {content_type}")
         return BedrockClassificationResult(
             document_type="other_document", confidence=0.0, document_count=1, is_document=True
         )
 
-    if len(image_bytes) > int(ConfigDefaults.BDA_MAX_IMAGE_SIZE_BYTES):
+    if content_type.startswith("image/") and len(document_bytes) > int(
+        ConfigDefaults.BDA_MAX_IMAGE_SIZE_BYTES
+    ):
         logger.info("Image exceeds 5MB, skipping classification")
         return BedrockClassificationResult(
             document_type="other_document", confidence=0.0, document_count=1, is_document=True
         )
 
-    prompt = _get_classification_prompt(document_types)
+    prompt = _get_classification_prompt()
+
+    if content_type == "application/pdf":
+        content_block = {
+            "document": {"format": "pdf", "name": "document", "source": {"bytes": document_bytes}}
+        }
+    else:
+        content_block = {
+            "image": {"format": content_type.split("/")[1], "source": {"bytes": document_bytes}}
+        }
+
     messages = [
         {
             "role": "user",
-            "content": [
-                {"image": {"format": content_type.split("/")[1], "source": {"bytes": image_bytes}}},
-                {"text": prompt},
-            ],
+            "content": [content_block, {"text": prompt}],
         }
     ]
 
@@ -76,16 +83,16 @@ def preclassify_document_image(
         parsed = json.loads(text)
 
         document_type = parsed.get("document_type", "other_document")
-        valid_types = [*document_types, "other_document", "not_a_document"]
+        valid_types = [e.value for e in PreclassificationCategory] + ["other_document"]
         if document_type not in valid_types:
             document_type = "other_document"
 
         classification = BedrockClassificationResult(
             document_type=document_type,
-            confidence=parsed.get("confidence", 0.0),
-            document_count=parsed.get("document_count", 1),
-            is_document=parsed.get("is_document", True),
-            is_blurry=parsed.get("is_blurry", False),
+            confidence=max(0.0, min(1.0, float(parsed.get("confidence", 0.0)))),
+            document_count=max(0, int(parsed.get("document_count", 1))),
+            is_document=str(parsed.get("is_document", True)).lower() == "true",
+            is_blurry=str(parsed.get("is_blurry", False)).lower() == "true",
         )
 
         logger.info(

@@ -112,7 +112,9 @@ def convert_s3_object_to_grayscale(bucket_name: str, object_key: str) -> bool:
         return False
 
 
-def _invoke_bda(bucket_name: str, object_key: str, ddb_key: str) -> dict[str, Any]:
+def _invoke_bda(
+    bucket_name: str, object_key: str, ddb_key: str, preclassification_category: str | None = None
+) -> dict[str, Any]:
     """Invoke BDA for a file that's ready for processing."""
     result: dict[str, Any] = {}
 
@@ -122,11 +124,14 @@ def _invoke_bda(bucket_name: str, object_key: str, ddb_key: str) -> dict[str, An
         retry=retry_if_exception_type(ClientError),
     ):
         with attempt:
-            invocation_arn = invoke_bedrock_data_automation(bucket_name, object_key)
+            invocation_arn, project_arn = invoke_bedrock_data_automation(
+                bucket_name, object_key, preclassification_category
+            )
 
             set_bda_processing_status_started(
                 object_key=ddb_key,
                 bda_invocation_arn=invocation_arn,
+                bda_project_arn_used=project_arn,
             )
 
             logger.info(f"BDA job started for {ddb_key}, ARN: {invocation_arn}")
@@ -135,10 +140,12 @@ def _invoke_bda(bucket_name: str, object_key: str, ddb_key: str) -> dict[str, An
     return result
 
 
-def invoke_bda(bucket_name: str, object_key: str, ddb_key: str) -> dict[str, Any]:
+def invoke_bda(
+    bucket_name: str, object_key: str, ddb_key: str, preclassification_category: str | None = None
+) -> dict[str, Any]:
     """Wrapper that handles retry failures."""
     try:
-        return _invoke_bda(bucket_name, object_key, ddb_key)
+        return _invoke_bda(bucket_name, object_key, ddb_key, preclassification_category)
     except RetryError as e:
         retry_state = e.last_attempt
         attempt_number = retry_state.attempt_number
@@ -205,14 +212,14 @@ def main(
     # the record is in its initial pre-classification state:
     #   - no record (doc-processor saw the S3 event before the API Lambda), OR
     #   - the API Lambda's minimal upload row (status=NOT_STARTED with no
-    #     preClassificationDocumentType yet).
+    #     preclassificationCategory yet).
     # Otherwise we'd re-classify when grayscale conversion overwrites the input
     # file in S3 and fires another event, looping the pipeline.
     needs_preclassification = existing_record is None or (
         ProcessStatus.is_awaiting_processing(
             existing_record.get(DocumentMetadata.PROCESS_STATUS, "")
         )
-        and DocumentMetadata.PRE_CLASSIFICATION_DOCUMENT_TYPE not in existing_record
+        and DocumentMetadata.PRECLASSIFICATION_CATEGORY not in existing_record
     )
 
     if needs_preclassification:
@@ -234,19 +241,23 @@ def main(
     status = existing_record.get(DocumentMetadata.PROCESS_STATUS)
 
     if status == ProcessStatus.PENDING_IMAGE_OPTIMIZATION:
+        preclassification_category = existing_record.get(
+            DocumentMetadata.PRECLASSIFICATION_CATEGORY
+        )
         if convert_s3_object_to_grayscale(bucket_name, object_key):
             set_bda_processing_status_not_started(ddb_key)
-            invoke_bda(bucket_name, object_key, ddb_key)
+            invoke_bda(bucket_name, object_key, ddb_key, preclassification_category)
             logger.info(f"Converted {ddb_key} to grayscale and invoked BDA")
         else:
-            # conversion failed or file too large
             classify_as_not_implemented(
                 object_key=ddb_key,
                 data=ClassificationData(additional_info="File too large after conversion"),
             )
     elif status and ProcessStatus.is_awaiting_processing(status):
-        # ready for BDA immediately
-        invoke_bda(bucket_name, object_key, ddb_key)
+        preclassification_category = existing_record.get(
+            DocumentMetadata.PRECLASSIFICATION_CATEGORY
+        )
+        invoke_bda(bucket_name, object_key, ddb_key, preclassification_category)
     else:
         logger.info(f"File {ddb_key} already has status: {status}, skipping")
 

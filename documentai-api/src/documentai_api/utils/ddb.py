@@ -21,7 +21,7 @@ from documentai_api.services import ddb as ddb_service
 from documentai_api.services import s3 as s3_service
 from documentai_api.services import sqs as sqs_service
 from documentai_api.utils import s3 as s3_utils
-from documentai_api.utils.bedrock import preclassify_document_image
+from documentai_api.utils.bedrock import preclassify_document
 from documentai_api.utils.dto import (
     ClassificationData,
     FieldMetrics,
@@ -30,7 +30,6 @@ from documentai_api.utils.dto import (
 )
 from documentai_api.utils.response_builder import build_v1_api_response, get_internal_api_response
 from documentai_api.utils.response_codes import ResponseCodes
-from documentai_api.utils.schemas import get_all_schemas
 from documentai_api.utils.ssm import get_bda_percentage
 
 logger = get_logger(__name__)
@@ -314,6 +313,7 @@ def _build_update_expression(
     internal_api_response: InternalApiResponse | None,
     v1_api_response: str | None,
     bda_invocation_arn: str | None = None,
+    bda_project_arn_used: str | None = None,
     error_message: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Build DynamoDB update expression and values."""
@@ -374,6 +374,10 @@ def _build_update_expression(
         )
         updates.append(f"{DocumentMetadata.BDA_REGION_USED} = :bdaRegion")
         values[":bdaRegion"] = bda_region
+
+    if bda_project_arn_used:
+        updates.append(f"{DocumentMetadata.BDA_PROJECT_ARN_USED} = :bdaProjectArn")
+        values[":bdaProjectArn"] = bda_project_arn_used
 
     if error_message:
         updates.append(f"{DocumentMetadata.ERROR_MESSAGE} = :errorMessage")
@@ -479,6 +483,7 @@ def update_ddb(
     internal_api_response: InternalApiResponse | None = None,
     data: ClassificationData | None = None,
     bda_invocation_arn: str | None = None,
+    bda_project_arn_used: str | None = None,
     error_message: str | None = None,
 ) -> None:
     """Update DynamoDB processing status for a file."""
@@ -490,6 +495,7 @@ def update_ddb(
             internal_api_response=internal_api_response,
             v1_api_response=None,  # built after ddb update
             bda_invocation_arn=bda_invocation_arn,
+            bda_project_arn_used=bda_project_arn_used,
             error_message=error_message,
         )
 
@@ -595,10 +601,10 @@ def upsert_ddb(
             expr_fields.append(f"{DocumentMetadata.IS_DOCUMENT_BLURRY} = :blurry")
             expr_values[":blurry"] = bool(is_document_blurry)
         if pre_classification_document_type is not None:
-            expr_fields.append(f"{DocumentMetadata.PRE_CLASSIFICATION_DOCUMENT_TYPE} = :pcdt")
+            expr_fields.append(f"{DocumentMetadata.PRECLASSIFICATION_CATEGORY} = :pcdt")
             expr_values[":pcdt"] = pre_classification_document_type
         if pre_classification_confidence is not None:
-            expr_fields.append(f"{DocumentMetadata.PRE_CLASSIFICATION_CONFIDENCE} = :pcc")
+            expr_fields.append(f"{DocumentMetadata.PRECLASSIFICATION_CONFIDENCE} = :pcc")
             expr_values[":pcc"] = Decimal(str(pre_classification_confidence))
         if external_document_id is not None:
             expr_fields.append(f"{DocumentMetadata.EXTERNAL_DOCUMENT_ID} = :extDocId")
@@ -694,9 +700,7 @@ def upsert_initial_ddb_record(
         response_code = ResponseCodes.DOCUMENT_TYPE_NOT_IMPLEMENTED
 
     elif bda_percentage == 1.0 or random.random() <= bda_percentage:
-        result = preclassify_document_image(
-            file_bytes, content_type, list(get_all_schemas().keys())
-        )
+        result = preclassify_document(file_bytes, content_type)
 
         pre_classification_document_type = result.document_type
         pre_classification_confidence = result.confidence
@@ -768,13 +772,16 @@ def upsert_initial_ddb_record(
         _send_record_to_metrics_queue(ddb_key)
 
 
-def set_bda_processing_status_started(object_key: str, bda_invocation_arn: str) -> None:
+def set_bda_processing_status_started(
+    object_key: str, bda_invocation_arn: str, bda_project_arn_used: str | None = None
+) -> None:
     """Mark file processing as started with BDA job ARN."""
     update_ddb(
         object_key=object_key,
         status=ProcessStatus.STARTED,
         internal_api_response=None,
         bda_invocation_arn=bda_invocation_arn,
+        bda_project_arn_used=bda_project_arn_used,
     )
 
 

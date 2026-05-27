@@ -82,6 +82,23 @@ class AWSEnvConfig(PydanticBaseEnvConfig):
     bedrock_classification_model_id_param: str | None = None
     bedrock_classification_prompt_param: str | None = None
 
+    # BDA project ARNs (per preclassification category)
+    preclassification_routing_param: str | None = None
+    bda_project_arn_tax_documents: str | None = None
+    bda_project_arn_employment_wages: str | None = None
+    bda_project_arn_independent_earnings: str | None = None
+    bda_project_arn_government_benefits: str | None = None
+    bda_project_arn_private_benefits_and_settlements: str | None = None
+    bda_project_arn_court_ordered_benefits: str | None = None
+    bda_project_arn_financial_assets: str | None = None
+    bda_project_arn_receipts_and_invoices: str | None = None
+    bda_project_arn_recurring_bills: str | None = None
+    bda_project_arn_housing_expenses: str | None = None
+    bda_project_arn_debt_obligations: str | None = None
+    bda_project_arn_identity_verification: str | None = None
+    bda_project_arn_right_to_work: str | None = None
+    bda_project_arn_all: str | None = None
+
     # Cognito
     cognito_user_pool_id: str | None = None
     cognito_client_id: str | None = None
