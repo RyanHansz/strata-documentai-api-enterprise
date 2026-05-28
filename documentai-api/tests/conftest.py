@@ -1,5 +1,7 @@
 """Shared test fixtures."""
 
+import os
+
 import pytest
 
 from documentai_api.config.env import EnvVars
@@ -15,8 +17,6 @@ from documentai_api.config.env import EnvVars
 @pytest.fixture(autouse=True, scope="session")
 def reset_env():
     """Start each test suite run with a clean environment."""
-    import os
-
     # save a copy of environment as it is at start of run
     env = dict(os.environ)
 
@@ -28,6 +28,22 @@ def reset_env():
     # for other fixtures that may want to reference real environment values for
     # their test settings
     return env
+
+
+@pytest.fixture
+def real_aws_credentials(reset_env):
+    """Restore AWS credentials cleared by the session-scoped reset_env fixture."""
+    for key in (
+        "HOME",
+        "AWS_PROFILE",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+    ):
+        if key in reset_env:
+            os.environ[key] = reset_env[key]
 
 
 #######################

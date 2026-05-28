@@ -65,3 +65,19 @@ def test_query_by_key_no_results(ddb_table):
         ddb_table.name, ddb_table.test_index_name, "userId", "user-999"
     )
     assert result == []
+
+
+def test_query_by_key_paginates_past_one_page(ddb_table):
+    """Query follows LastEvaluatedKey so results aren't truncated at the 1MB page limit."""
+    # DynamoDB caps a query page at 1MB. Write enough large items under one GSI
+    # key to span multiple pages; ~350KB each x 5 = ~1.75MB.
+    blob = "x" * 350_000
+    expected_ids = {f"id-{i}" for i in range(5)}
+    for item_id in expected_ids:
+        ddb_table.put_item(Item={"id": item_id, "userId": "user-123", "blob": blob})
+
+    result = ddb_service.query_by_key(
+        ddb_table.name, ddb_table.test_index_name, "userId", "user-123"
+    )
+
+    assert {item["id"] for item in result} == expected_ids

@@ -20,6 +20,28 @@ For this project specifically:
 
 There are occasions where tests may not line up exactly with a single source file, function, or otherwise may need to deviate from this exact structure, but this is the setup in general.
 
+End-to-end tests are the main exception: they live under `tests/e2e/` and are organized by the behavior they exercise (e.g. document upload + processing) rather than mirroring a single source file.
+
+## Test Tiers (Markers)
+
+Tests are split into three tiers via pytest markers, configured in `pyproject.toml`:
+
+| Tier | Marker | AWS | When it runs |
+| --- | --- | --- | --- |
+| Unit | _(none)_ | moto / none | `make test` (default) |
+| Integration | `integration` | moto | `make test args="-m integration"` |
+| End-to-end | `e2e` | **real, deployed** | `make test-e2e` |
+
+The default `make test` run excludes `integration` and `e2e` (and `audit`) via `addopts`. This keeps the everyday suite fast and free of real-AWS dependencies.
+
+### End-to-End Tests
+
+E2E tests (`tests/e2e/`) run against a **real, deployed** environment — real DynamoDB/S3 and a live API at `BASE_URL`. They require `.env.e2e`, which `make test-e2e` regenerates from terraform outputs.
+
+- You do **not** decorate e2e tests with `@pytest.mark.e2e` individually — a `pytest_collection_modifyitems` hook in `tests/e2e/conftest.py` applies the marker to everything in that directory automatically.
+- Tests run under a **per-worker** tenant (`e2e-test-tenant-<worker_id>`, where `worker_id` is `master` serially or `gw0`/`gw1`/… under `-n`). This keeps parallel xdist workers from wiping each other's data, since each worker creates and cleans up only its own tenant.
+- Cleanup of the documents they create is **opt-in**: set `E2E_WIPE_TENANT=1` to delete them from DynamoDB/S3 at session end; otherwise the data is left in place for inspection.
+
 ## Mocking AWS Services
 
 Tests use [moto](https://docs.getmoto.org/en/latest/) to mock AWS service calls, allowing tests to run without requiring actual AWS infrastructure.
@@ -89,7 +111,9 @@ def test_document_processing(sample_pdf_bytes):
 
 ## Running Tests
 
-- `make test` - Run all tests
+- `make test` - Run the default (unit) suite — excludes `integration`, `e2e`, and `audit`
+- `make test args="-m integration"` - Run integration (moto) tests
+- `make test-e2e` - Run end-to-end tests against real deployed AWS (regenerates `.env.e2e`)
 - `make test-coverage` - Run tests with coverage report
 - `make test-parallel` - Run tests in parallel
 - `make test args=tests/path/test_file.py` - Run specific test file

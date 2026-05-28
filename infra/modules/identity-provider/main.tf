@@ -177,7 +177,7 @@ resource "aws_cognito_user_pool_client" "this" {
   enable_propagate_additional_user_context_data = false
 
   read_attributes = ["email", "email_verified", "phone_number", "phone_number_verified", "updated_at", "custom:tenant_id"]
-  # tenant_id is intentionally NOT in write_attributes — users must not set their
+  # tenant_id is intentionally NOT in write_attributes - users must not set their
   # own tenant. It's written via AdminUpdateUserAttributes from the backend.
   write_attributes = ["email", "updated_at", "phone_number"]
 }

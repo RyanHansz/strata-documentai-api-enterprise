@@ -189,13 +189,21 @@ API keys can be created via:
 
 ## Testing
 
-Tests use pytest with moto for AWS service mocking. No real AWS infrastructure required.
+Most tests use pytest with moto for AWS service mocking — no real AWS infrastructure required. Tests are split into three tiers via pytest markers:
+
+- **unit** (default): fast, moto-backed or pure-logic tests.
+- **integration** (`-m integration`): also moto-backed; run separately from the default suite.
+- **e2e** (`-m e2e`): run against **real deployed AWS** and a live API. These need `.env.e2e` (generated from terraform outputs) and are excluded from the default run.
 
 ```bash
-make test                                    # All tests
+make test                                    # Unit suite (excludes integration + e2e)
 make test args=tests/test_app_documents.py   # Specific file
 make test args="tests/test_auth.py::test_valid_key"  # Specific test
+make test args="-m integration"              # Integration (moto) tests
+make test-e2e                                # E2E tests against real AWS (regenerates .env.e2e)
 ```
+
+E2E tests create documents under a dedicated per-worker tenant (`e2e-test-tenant-<worker>`, e.g. `-master` serially or `-gw0` under `-n`), so parallel workers never wipe each other's data. Cleanup (deleting those documents from DynamoDB/S3) is **opt-in** — set `E2E_WIPE_TENANT=1` to enable it; otherwise test data is left in place.
 
 ## Project Structure
 
@@ -256,6 +264,7 @@ tests/
 ├── conftest.py                     # Shared fixtures (moto, test client)
 ├── helpers/                        # Test utilities
 ├── jobs/                           # Job handler tests
+├── e2e/                            # E2E tests against real deployed AWS (make test-e2e)
 ├── test_app_documents.py
 ├── test_auth.py
 └── ...

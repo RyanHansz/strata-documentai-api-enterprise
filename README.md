@@ -2,6 +2,15 @@
 
 Serverless document processing platform with intelligent extraction, multi-tenant API key management, and an admin console.
 
+
+> ⚠️ **Public Preview / Active Development**
+> This project is under active development. APIs, configurations, and features are subject to change. 
+> It is **not ready for production**.
+> 
+> While the core architectural foundation is set, features and APIs remain fluid as we harden the 
+> codebase and complete the documentation.
+
+
 ## Repository Structure
 
 ```

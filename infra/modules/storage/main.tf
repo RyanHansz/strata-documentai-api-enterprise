@@ -13,6 +13,16 @@ variable "service_principals_with_access" {
   default = []
 }
 
+variable "versioning_status" {
+  description = "The versioning state of the bucket."
+  type        = string
+  default     = "Disabled" # Default to Disabled, set to "Enabled" if versioning is desired
+  validation {
+    condition     = contains(["Enabled", "Disabled", "Suspended"], var.versioning_status)
+    error_message = "versioning_status must be Enabled, Disabled, or Suspended."
+  }
+}
+
 variable "lifecycle_rules" {
   type = list(object({
     id                         = string
@@ -51,7 +61,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.this.id
   versioning_configuration {
-    status = "Enabled"
+    status = var.versioning_status
   }
 }
 

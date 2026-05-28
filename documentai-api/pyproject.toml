@@ -116,10 +116,11 @@ exclude_lines = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-m 'not audit and not integration'"
+addopts = "-m 'not audit and not integration and not e2e'"
 markers = [
     "audit: mark a test as a security audit log test, to be run isolated from other tests",
     "integration: tests that use moto or real external services",
+    "e2e: end-to-end tests against real deployed AWS infrastructure (require .env.e2e)",
 ]
 
 [build-system]

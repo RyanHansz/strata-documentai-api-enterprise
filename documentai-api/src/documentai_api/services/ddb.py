@@ -75,9 +75,23 @@ def query_by_key(
     import boto3
 
     ddb_table = AWSClientFactory.get_ddb_table(table_name)
-    response = ddb_table.query(
-        IndexName=index_name,
-        KeyConditionExpression=boto3.dynamodb.conditions.Key(key_name).eq(key_value),  # type: ignore[attr-defined]
-    )
-    items = response.get("Items", [])
-    return [dict(item) for item in items]
+    key_condition = boto3.dynamodb.conditions.Key(key_name).eq(key_value)  # type: ignore[attr-defined]
+
+    items: list[dict[str, Any]] = []
+    last_evaluated_key: dict[str, Any] | None = None
+    while True:
+        kwargs: dict[str, Any] = {
+            "IndexName": index_name,
+            "KeyConditionExpression": key_condition,
+        }
+        if last_evaluated_key:
+            kwargs["ExclusiveStartKey"] = last_evaluated_key
+
+        response = ddb_table.query(**kwargs)
+        items.extend(dict(item) for item in response.get("Items", []))
+
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
+
+    return items

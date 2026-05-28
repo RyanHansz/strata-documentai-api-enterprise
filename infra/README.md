@@ -63,11 +63,11 @@ All commands accept `ENVIRONMENT=dev|staging|prod` and `AWS_PROFILE=your-profile
 ```
 environments/
 └── dev/
-    ├── main.tf           — module composition
-    ├── variables.tf      — input variable declarations
-    ├── terraform.tfvars  — environment-specific values
-    ├── outputs.tf        — exported values (API URL, CloudFront URL, etc.)
-    └── backend.tf        — S3 state backend config
+    ├── main.tf           - module composition
+    ├── variables.tf      - input variable declarations
+    ├── terraform.tfvars  - environment-specific values
+    ├── outputs.tf        - exported values (API URL, CloudFront URL, etc.)
+    └── backend.tf        - S3 state backend config
 ```
 
 To add a new environment, copy `environments/dev/`, update `terraform.tfvars` (region, project name, etc.), and run `make infra-bootstrap ENVIRONMENT=<name>` to create its state bucket. You'll also need to configure Cognito callback URLs and push a container image for the new environment.
@@ -77,7 +77,7 @@ To add a new environment, copy `environments/dev/`, update `terraform.tfvars` (r
 - State stored in S3 with versioning enabled
 - Bucket naming: `docai-tfstate-{account-id}-{environment}`
 - Lock file based (Terraform 1.10+ `use_lockfile=true`)
-- State buckets are **not** destroyed by `infra-destroy` — this is intentional
+- State buckets are **not** destroyed by `infra-destroy` - this is intentional
 
 ## Region
 

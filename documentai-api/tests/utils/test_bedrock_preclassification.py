@@ -7,7 +7,6 @@ real Bedrock and require AWS credentials:
 """
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -506,7 +505,7 @@ def test_native_bools_pass_through(monkeypatch):
 # =============================================================================
 
 FIXTURES_DIR = Path(__file__).parent.parent / "helpers" / "fixtures" / "test-documents"
-EXPECTED_FILE = FIXTURES_DIR / "expected_classifications.json"
+EXPECTED_FILE = FIXTURES_DIR / "expected.json"
 
 CONTENT_TYPE_MAP = {
     ".jpg": "image/jpeg",
@@ -528,23 +527,7 @@ def _get_content_type(filename: str) -> str:
     return CONTENT_TYPE_MAP.get(ext, "application/octet-stream")
 
 
-_expected_items = _load_expected().items()
-
-
-@pytest.fixture
-def restore_aws_env(reset_env):
-    """Restore AWS credentials cleared by the session-scoped reset_env fixture."""
-    for key in (
-        "HOME",
-        "AWS_PROFILE",
-        "AWS_DEFAULT_REGION",
-        "AWS_REGION",
-        "AWS_ACCESS_KEY_ID",
-        "AWS_SECRET_ACCESS_KEY",
-        "AWS_SESSION_TOKEN",
-    ):
-        if key in reset_env:
-            os.environ[key] = reset_env[key]
+_expected_items = [(k, v["preclassificationCategory"]) for k, v in _load_expected().items()]
 
 
 @pytest.mark.integration
@@ -553,7 +536,7 @@ def restore_aws_env(reset_env):
     _expected_items
     or [pytest.param("skip", "skip", marks=pytest.mark.skip(reason="No test fixtures"))],
 )
-def test_preclassify_real_document(filename, expected_category, monkeypatch, restore_aws_env):
+def test_preclassify_real_document(filename, expected_category, monkeypatch, real_aws_credentials):
     """Classify a real document and assert it routes to the correct category."""
     monkeypatch.setattr(
         "documentai_api.utils.bedrock._get_model_id",

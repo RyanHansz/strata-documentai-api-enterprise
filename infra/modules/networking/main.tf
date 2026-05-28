@@ -1,4 +1,4 @@
-# Networking data module — looks up existing VPC and subnets by name.
+# Networking data module - looks up existing VPC and subnets by name.
 
 variable "vpc_name" {
   type        = string

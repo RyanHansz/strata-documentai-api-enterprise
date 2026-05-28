@@ -47,14 +47,14 @@ locals {
   # SSM
   ssm_prefix = "/${var.project_name}/${var.environment}"
 
-  # Glue — table name comes from analytics module output
+  # Glue - table name comes from analytics module output
 
   # App defaults
   max_bda_invoke_retry_attempts = "3"
   api_auth_enabled              = "true"
   api_auth_cache_ttl            = "300"
 
-  # DynamoDB GSI names — single source of truth for infra + env vars
+  # DynamoDB GSI names - single source of truth for infra + env vars
   gsi_job_id               = "JobIdIndex"
   gsi_external_document_id = "ExternalDocumentIdIndex"
   gsi_tenant_id            = "TenantIdIndex"
@@ -321,7 +321,7 @@ module "bedrock_data_automation" {
   name = "${local.service_name}-${each.key}"
 
   blueprints = concat(
-    # Custom document type schemas — "all" project gets every custom blueprint
+    # Custom document type schemas - "all" project gets every custom blueprint
     each.key == "all"
     ? [for f in fileset("${path.module}/../../custom-document-types", "*/*.json") : "${path.module}/../../custom-document-types/${f}"]
     : [for f in fileset("${path.module}/../../custom-document-types/${each.key}", "*.json") : "${path.module}/../../custom-document-types/${each.key}/${f}"],

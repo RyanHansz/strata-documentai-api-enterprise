@@ -8,7 +8,7 @@ variable "default_root_object" {
   default = "index.html"
 }
 
-# --- S3 Bucket (private, no website hosting — served via CloudFront OAC) ---
+# --- S3 Bucket (private, no website hosting - served via CloudFront OAC) ---
 
 resource "aws_s3_bucket" "site" {
   bucket        = var.name
@@ -95,7 +95,7 @@ resource "aws_cloudfront_distribution" "site" {
     max_ttl     = 86400
   }
 
-  # SPA fallback — return index.html for 403/404 (S3 returns 403 for missing keys)
+  # SPA fallback - return index.html for 403/404 (S3 returns 403 for missing keys)
   custom_error_response {
     error_code         = 403
     response_code      = 200

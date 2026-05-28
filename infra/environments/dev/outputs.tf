@@ -18,6 +18,22 @@ output "audit_events_table" {
   value = module.audit_events.table_name
 }
 
+output "api_keys_table" {
+  value = module.api_keys.table_name
+}
+
+output "tenants_table" {
+  value = module.tenants.table_name
+}
+
+output "document_metadata_tenant_index_name" {
+  value = local.gsi_tenant_id
+}
+
+output "document_metadata_job_id_index_name" {
+  value = local.gsi_job_id
+}
+
 output "input_bucket" {
   value = module.input_bucket.bucket_name
 }
@@ -49,5 +65,4 @@ output "admin_ui_distribution_id" {
 output "admin_ui_url" {
   value = module.admin_ui.url
 }
-
 
