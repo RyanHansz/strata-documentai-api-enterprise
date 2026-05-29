@@ -1,1 +1,23 @@
 .DS_Store
+
+# --- Secrets / sensitive files (repo-wide safety net) ---
+# These should never be committed. Patterns are unanchored so they match at any depth.
+.env
+.env.*
+!.env.example
+!*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials
+*.credentials
+
+# --- Terraform local state / secrets ---
+# State can contain secrets in plaintext; never commit it.
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars.local
+crash.log
+crash.*.log
