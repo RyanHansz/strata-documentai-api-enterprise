@@ -191,8 +191,9 @@ $(APP_DOCS_DIR)/media/%.png: $(APP_DOCS_DIR)/diagrams/%.mmd
 	-v $(APP_DOCS_DIR):/data \
 	ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest \
 	-i diagrams/$*.mmd \
-	-o media/$*.png \
-	--iconPacks '@iconify-json/logos'
+	-o media/$*.svg \
+	--iconPacks '@iconify-json/logos' \
+	--iconPacks '@iconify-json/material-symbols'
 
 help: ## Show help
 	@grep -Eh '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
