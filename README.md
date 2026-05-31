@@ -188,7 +188,11 @@ At a high level:
 6. The result processor Lambda extracts fields and updates DynamoDB.
 7. Metrics are emitted to SQS, processed into Parquet via Glue, and stored in S3.
 
-See `docs/documentai-api/diagrams/architecture.mmd` for the full architecture diagram.
+The system follows an event-driven architecture:
+
+![Architecture diagram](docs/documentai-api/media/architecture.svg)
+
+The diagram source lives in [`architecture.mmd`](docs/documentai-api/diagrams/architecture.mmd).
 
 ## Auth
 

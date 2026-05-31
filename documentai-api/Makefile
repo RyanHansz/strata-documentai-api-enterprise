@@ -51,8 +51,8 @@ APP_DOCS_DIR := $(CURDIR)/../docs/$(APP_NAME)
 TF_DIR := ../infra/environments/dev
 
 DIAGRAMS := \
-	$(APP_DOCS_DIR)/media/architecture.png \
-	$(APP_DOCS_DIR)/media/request-lifecycle.png
+	$(APP_DOCS_DIR)/media/architecture.svg \
+	$(APP_DOCS_DIR)/media/request-lifecycle.svg
 
 # By default, all python/uv commands will run inside of the docker container
 # if you wish to run this natively, add RUN_CMD_APPROACH=local to your environment vars
@@ -183,10 +183,10 @@ clean: ## Clean build artifacts
 openapi-spec: ## Export openapi spec to docs directory
 	$(PY_RUN_CMD) export-openapi > $(APP_DOCS_DIR)/openapi.json
 
-diagrams: ## Render all .mmd diagrams to PNG
+diagrams: ## Render all .mmd diagrams to SVG
 diagrams: $(DIAGRAMS)
 
-$(APP_DOCS_DIR)/media/%.png: $(APP_DOCS_DIR)/diagrams/%.mmd
+$(APP_DOCS_DIR)/media/%.svg: $(APP_DOCS_DIR)/diagrams/%.mmd
 	docker run --rm \
 	-v $(APP_DOCS_DIR):/data \
 	ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest \

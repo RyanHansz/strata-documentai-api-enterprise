@@ -8,7 +8,11 @@ A serverless document processing system deployed as a Lambda container. Handles 
 
 ## Architecture
 
-The system follows an event-driven architecture. See the [architecture diagram](../docs/documentai-api/diagrams/architecture.mmd) for the complete system view.
+The system follows an event-driven architecture:
+
+![Architecture diagram](../docs/documentai-api/media/architecture.svg)
+
+The diagram source lives in [`architecture.mmd`](../docs/documentai-api/diagrams/architecture.mmd).
 
 **Processing Flow:**
 1. Document uploaded via API endpoint, stored in S3, metadata written to DynamoDB
@@ -17,6 +21,12 @@ The system follows an event-driven architecture. See the [architecture diagram](
 4. BDA writes results to S3 output bucket
 5. EventBridge triggers BDA Result Processor to extract fields and update DynamoDB
 6. Metrics emitted to SQS → Metrics Processor → S3 (Parquet) → Glue
+
+The request lifecycle across these components:
+
+![Request lifecycle diagram](../docs/documentai-api/media/request-lifecycle.svg)
+
+The diagram source lives in [`request-lifecycle.mmd`](../docs/documentai-api/diagrams/request-lifecycle.mmd).
 
 ## Features
 
