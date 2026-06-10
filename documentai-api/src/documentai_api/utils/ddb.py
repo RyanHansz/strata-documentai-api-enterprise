@@ -1,5 +1,4 @@
 import json
-import random
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -22,6 +21,7 @@ from documentai_api.services import ddb as ddb_service
 from documentai_api.services import s3 as s3_service
 from documentai_api.services import sqs as sqs_service
 from documentai_api.utils import s3 as s3_utils
+from documentai_api.utils.bda import calculate_average_non_empty_confidence
 from documentai_api.utils.bedrock import preclassify_document
 from documentai_api.utils.dto import (
     ClassificationData,
@@ -31,7 +31,6 @@ from documentai_api.utils.dto import (
 )
 from documentai_api.utils.response_builder import build_v1_api_response, get_internal_api_response
 from documentai_api.utils.response_codes import ResponseCodes
-from documentai_api.utils.ssm import get_bda_percentage
 from documentai_api.utils.ttl import ttl_epoch_in_days
 
 logger = get_logger(__name__)
@@ -215,19 +214,14 @@ def _calculate_field_metrics(data: ClassificationData) -> FieldMetrics:
     field_count = len(data.field_confidence_scores)
     empty_fields = set(data.field_empty_list or [])
 
-    # Count non-empty fields and sum their confidence scores
-    non_empty_count = 0
-    confidence_sum = 0
-
-    for field_data in data.field_confidence_scores:
-        field_name = next(iter(field_data.keys()))
-        confidence = next(iter(field_data.values()))
-
-        if field_name not in empty_fields:
-            non_empty_count += 1
-            confidence_sum += confidence
-
-    avg_confidence = confidence_sum / non_empty_count if non_empty_count > 0 else None
+    non_empty_count = sum(
+        1
+        for field_data in data.field_confidence_scores
+        if next(iter(field_data.keys())) not in empty_fields
+    )
+    avg_confidence = calculate_average_non_empty_confidence(
+        data.field_confidence_scores, data.field_empty_list
+    )
 
     return FieldMetrics(field_count, non_empty_count, avg_confidence)
 
@@ -317,6 +311,7 @@ def _build_update_expression(
     bda_invocation_arn: str | None = None,
     bda_project_arn_used: str | None = None,
     error_message: str | None = None,
+    below_extraction_confidence_floor: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """Build DynamoDB update expression and values."""
     updates = [
@@ -391,6 +386,10 @@ def _build_update_expression(
     if error_message:
         updates.append(f"{DocumentMetadata.ERROR_MESSAGE} = :errorMessage")
         values[":errorMessage"] = error_message
+
+    if below_extraction_confidence_floor:
+        updates.append(f"{DocumentMetadata.BELOW_EXTRACTION_CONFIDENCE_FLOOR} = :belowFloor")
+        values[":belowFloor"] = True
 
     return "SET " + ", ".join(updates), values
 
@@ -497,6 +496,7 @@ def update_ddb(
     bda_invocation_arn: str | None = None,
     bda_project_arn_used: str | None = None,
     error_message: str | None = None,
+    below_extraction_confidence_floor: bool = False,
 ) -> None:
     """Update DynamoDB processing status for a file."""
     try:
@@ -509,6 +509,7 @@ def update_ddb(
             bda_invocation_arn=bda_invocation_arn,
             bda_project_arn_used=bda_project_arn_used,
             error_message=error_message,
+            below_extraction_confidence_floor=below_extraction_confidence_floor,
         )
 
         # add timing updates
@@ -524,9 +525,14 @@ def update_ddb(
         # build v1 response after ddb has been updated
         v1_response = build_v1_api_response(object_key, status, data, error_message=error_message)
 
-        # update ddb again with v1_response
+        # update ddb again with v1_response. The v1 builder is the single authority for
+        # response-code precedence (e.g. missing-fields wins over low-confidence), keep
+        # the DDB RESPONSE_CODE in sync with the code determined by response builder.
         update_expr = f"SET {DocumentMetadata.V1_API_RESPONSE_JSON} = :v1ResponseJson"
         expr_values = {":v1ResponseJson": json.dumps(v1_response)}
+        if "responseCode" in v1_response:
+            update_expr += f", {DocumentMetadata.RESPONSE_CODE} = :responseCode"
+            expr_values[":responseCode"] = v1_response["responseCode"]
         _execute_ddb_update(object_key, update_expr, expr_values)
 
         if ProcessStatus.is_completed(status):
@@ -721,7 +727,6 @@ def upsert_initial_ddb_record(
     file_size_bytes = s3_service.get_file_size_bytes(source_bucket_name, source_object_key)
     file_bytes = s3_service.get_file_bytes(source_bucket_name, source_object_key)
 
-    bda_percentage = get_bda_percentage(user_provided_document_category)
     response_code = ResponseCodes.SUCCESS
     internal_api_response: InternalApiResponse | None = None
     process_status = ProcessStatus.PENDING_IMAGE_OPTIMIZATION
@@ -735,18 +740,13 @@ def upsert_initial_ddb_record(
         process_status = ProcessStatus.PASSWORD_PROTECTED
         response_code = ResponseCodes.MISSING_FIELDS
 
-    elif bda_percentage == 0.0 or not bda_percentage:
-        process_status = ProcessStatus.NOT_IMPLEMENTED
-        response_code = ResponseCodes.DOCUMENT_TYPE_NOT_IMPLEMENTED
-
-    elif bda_percentage == 1.0 or random.random() <= bda_percentage:
+    else:
         result = preclassify_document(file_bytes, content_type)
 
         pre_classification_document_type = result.document_type
         pre_classification_confidence = result.confidence
 
         if not result.is_document:
-            # clearly not a document (cat, random photo, etc.)
             process_status = ProcessStatus.NO_DOCUMENT_DETECTED
             response_code = ResponseCodes.NO_DOCUMENT_DETECTED
 
@@ -760,15 +760,10 @@ def upsert_initial_ddb_record(
             response_code = ResponseCodes.MULTIPLE_DOCUMENTS_ON_SINGLE_PAGE
 
         else:
-            # document passed pre-classification, proceed to extraction
             if content_type in FileValidation.GRAYSCALE_CONVERTIBLE:
                 process_status = ProcessStatus.PENDING_IMAGE_OPTIMIZATION
             else:
                 process_status = ProcessStatus.NOT_STARTED
-
-    else:
-        process_status = ProcessStatus.NOT_SAMPLED
-        response_code = ResponseCodes.SUCCESS
 
     # initial status does not qualify for bda processing
     # create the json response signaling the process is complete
@@ -834,7 +829,10 @@ def set_bda_processing_status_not_started(object_key: str) -> None:
 
 
 def classify_as_success(
-    object_key: str, response_code: str, data: ClassificationData
+    object_key: str,
+    response_code: str,
+    data: ClassificationData,
+    below_extraction_confidence_floor: bool = False,
 ) -> dict[str, Any]:
     """Mark file processing as completed."""
     internal_api_response: InternalApiResponse = get_internal_api_response(
@@ -848,6 +846,7 @@ def classify_as_success(
         status=ProcessStatus.SUCCESS,
         internal_api_response=internal_api_response,
         data=data,
+        below_extraction_confidence_floor=below_extraction_confidence_floor,
     )
 
     # convert dataclass to dict for JSON serialization

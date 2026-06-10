@@ -35,6 +35,7 @@ def _to_item(record: dict[str, Any]) -> TenantItem:
         display_name=record.get(TenantRecord.DISPLAY_NAME, ""),
         primary_contact=record.get(TenantRecord.PRIMARY_CONTACT),
         is_active=record.get(TenantRecord.IS_ACTIVE, True),
+        extraction_confidence_floor=record.get(TenantRecord.EXTRACTION_CONFIDENCE_FLOOR),
         created_at=record.get(TenantRecord.CREATED_AT),
         updated_at=record.get(TenantRecord.UPDATED_AT),
     )
@@ -61,6 +62,7 @@ async def create_tenant(
             tenant_id=body.tenant_id,
             display_name=body.display_name,
             primary_contact=body.primary_contact,
+            extraction_confidence_floor=body.extraction_confidence_floor,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
@@ -122,6 +124,7 @@ async def update_tenant(
             display_name=body.display_name,
             primary_contact=body.primary_contact,
             is_active=is_active,
+            extraction_confidence_floor=body.extraction_confidence_floor,
         )
     except ValueError as e:
         msg = str(e)

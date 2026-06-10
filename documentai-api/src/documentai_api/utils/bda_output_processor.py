@@ -6,9 +6,11 @@ from typing import Any
 from documentai_api.config.constants import BdaResponseFields, ConfigDefaults
 from documentai_api.config.env import EnvVars, get_required_env
 from documentai_api.logging import get_logger
+from documentai_api.schemas.document_metadata import DocumentMetadata
 from documentai_api.services.bda import extract_bda_output_s3_uri, get_bda_result_json
 from documentai_api.utils.bda import (
     BdaFieldProcessingData,
+    calculate_average_non_empty_confidence,
     extract_field_metadata_from_bda_results,
     get_text_from_standard_blueprint,
 )
@@ -19,6 +21,7 @@ from documentai_api.utils.ddb import (
 )
 from documentai_api.utils.dto import ClassificationData
 from documentai_api.utils.response_codes import ResponseCodes
+from documentai_api.utils.tenants import get_extraction_confidence_floor
 
 logger = get_logger(__name__)
 
@@ -79,7 +82,6 @@ def process_bda_output(bda_output_bucket_name: str, bda_output_object_key: str) 
     # if it didn't, the downstream NO_CUSTOM_BLUEPRINT_MATCHED / NO_DOCUMENT_DETECTED
     # paths handle the no-blueprint case.
     from documentai_api.config.constants import UUID_PATTERN
-    from documentai_api.schemas.document_metadata import DocumentMetadata
     from documentai_api.services import ddb as ddb_service
 
     bda_output_s3_uri = extract_bda_output_s3_uri(bda_output_bucket_name, bda_output_object_key)
@@ -163,11 +165,34 @@ def process_bda_output(bda_output_bucket_name: str, bda_output_object_key: str) 
         classification_data.field_empty_list = results.empty_field_list
         classification_data.additional_info = msg
 
+        # Check average confidence against tenant's extraction confidence floor
+        tenant_id = ddb_record.get(DocumentMetadata.TENANT_ID)
+        response_code = results.response_code or ResponseCodes.SUCCESS
+        below_floor = _is_below_extraction_confidence_floor(results, tenant_id)
+
+        if below_floor:
+            response_code = ResponseCodes.LOW_EXTRACTION_CONFIDENCE
+
         return classify_as_success(
             object_key=file_name,
-            response_code=results.response_code or ResponseCodes.SUCCESS,
+            response_code=response_code,
             data=classification_data,
+            below_extraction_confidence_floor=below_floor,
         )
+
+
+def _is_below_extraction_confidence_floor(
+    results: BdaProcessingResults,
+    tenant_id: str | None,
+) -> bool:
+    """Check if average non-empty field confidence is below the tenant's floor."""
+    avg_confidence = calculate_average_non_empty_confidence(
+        results.field_confidence_map_list, results.empty_field_list
+    )
+    if avg_confidence is None:
+        return False
+
+    return avg_confidence < get_extraction_confidence_floor(tenant_id)
 
 
 __all__ = ["process_bda_output"]

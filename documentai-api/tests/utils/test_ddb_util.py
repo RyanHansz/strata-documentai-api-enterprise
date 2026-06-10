@@ -607,7 +607,6 @@ def test_upsert_initial_ddb_record(
     if preclassify_result:
         mock_preclassify.return_value = preclassify_result
 
-    mocker.patch("documentai_api.utils.ddb.get_bda_percentage", return_value=1.0)
     mocker.patch(
         "documentai_api.utils.ddb.build_v1_api_response", return_value={"status": "completed"}
     )
@@ -759,6 +758,9 @@ def test_classify_functions(
 
     if error_msg:
         expected_call["error_message"] = error_msg
+
+    if function == ddb_util.classify_as_success:
+        expected_call["below_extraction_confidence_floor"] = False
 
     mock_update.assert_called_once_with(**expected_call)
 

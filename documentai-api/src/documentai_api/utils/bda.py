@@ -16,6 +16,23 @@ class BdaFieldProcessingData:
     field_confidence_map_list: list[dict[str, float]]
 
 
+def calculate_average_non_empty_confidence(
+    field_confidence_map_list: list[dict[str, float]],
+    empty_fields: list[str] | None,
+) -> float | None:
+    """Mean confidence across non-empty fields. None when there are no such fields."""
+    empty_set = set(empty_fields or [])
+    scores = [
+        conf
+        for field_map in field_confidence_map_list
+        for name, conf in field_map.items()
+        if name not in empty_set
+    ]
+    if not scores:
+        return None
+    return sum(scores) / len(scores)
+
+
 @dataclass
 class BdaFieldProcessingResult:
     confidence: float

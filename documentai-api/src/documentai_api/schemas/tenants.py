@@ -10,6 +10,7 @@ class TenantRecord:
     DISPLAY_NAME = "displayName"
     PRIMARY_CONTACT = "primaryContact"
     IS_ACTIVE = "isActive"
+    EXTRACTION_CONFIDENCE_FLOOR = "extractionConfidenceFloor"
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"
 

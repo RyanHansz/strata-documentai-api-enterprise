@@ -13,6 +13,7 @@ Subclass and declare table config to get standard CRUD operations:
 """
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from documentai_api.logging import get_logger
@@ -21,6 +22,17 @@ from documentai_api.utils.aws_client_factory import AWSClientFactory
 from documentai_api.utils.base_readonly_table import ReadOnlyTable
 
 logger = get_logger(__name__)
+
+
+def _floats_to_decimal(value: Any) -> Any:
+    """Recursively convert floats to Decimal; DynamoDB rejects native floats."""
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, dict):
+        return {k: _floats_to_decimal(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_floats_to_decimal(v) for v in value]
+    return value
 
 
 class BaseCrudTable(ReadOnlyTable):
@@ -60,7 +72,7 @@ class BaseCrudTable(ReadOnlyTable):
         if self.active_field:
             item.setdefault(self.active_field, True)
 
-        ddb_service.put_item(self._get_table_name(), item)
+        ddb_service.put_item(self._get_table_name(), _floats_to_decimal(item))
         return item
 
     def update(self, pk_value: str, sk_value: str | None = None, **fields: Any) -> dict[str, Any]:
@@ -82,7 +94,7 @@ class BaseCrudTable(ReadOnlyTable):
         for field_name, value in updates.items():
             param = f":{field_name}"
             update_parts.append(f"{field_name} = {param}")
-            expr_values[param] = value
+            expr_values[param] = _floats_to_decimal(value)
 
         update_expr = "SET " + ", ".join(update_parts)
         key = self._build_key(pk_value, sk_value)
@@ -105,7 +117,7 @@ class BaseCrudTable(ReadOnlyTable):
             if value is not None:
                 param = f":{field_name}"
                 update_parts.append(f"{field_name} = {param}")
-                expr_values[param] = value
+                expr_values[param] = _floats_to_decimal(value)
 
         update_parts.append(f"{self.updated_field} = :now")
         update_parts.append(f"{self.created_field} = if_not_exists({self.created_field}, :now)")
