@@ -582,7 +582,6 @@ def test_get_batch_status_is_classified_vs_is_completed(api_client):
         mock_query_jobs.return_value = [
             {"fileName": "doc1.pdf", "jobId": "job-1", "processStatus": "success"},
             {"fileName": "doc2.pdf", "jobId": "job-2", "processStatus": "not_implemented"},
-            {"fileName": "doc3.pdf", "jobId": "job-3", "processStatus": "not_sampled"},
         ]
 
         response = api_client.get("/v1/batches/test-batch")
@@ -591,7 +590,7 @@ def test_get_batch_status_is_classified_vs_is_completed(api_client):
         data = response.json()
         # All jobs are terminal (is_classified) so lazy completion triggers
         mock_update.assert_called_once()
-        # Only "success" counts as completed - not_implemented and not_sampled do not
+        # Only "success" counts as completed - not_implemented does not
         assert data["completed"] == 1
         # All jobs are terminal so inProgress is 0
         assert data["inProgress"] == 0

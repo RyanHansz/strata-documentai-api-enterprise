@@ -24,7 +24,6 @@ def mock_env(runtime_required_env):
 def mock_preclassification(mocker):
     from documentai_api.utils.dto import BedrockClassificationResult
 
-    mocker.patch("documentai_api.utils.ddb.get_bda_percentage", return_value=1.0)
     mocker.patch(
         "documentai_api.utils.ddb.preclassify_document",
         return_value=BedrockClassificationResult(

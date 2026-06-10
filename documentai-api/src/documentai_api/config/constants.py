@@ -104,7 +104,7 @@ class Cache:
 
 
 class ConfigDefaults:
-    FIELD_CONFIDENCE_THRESHOLD = 0.7
+    FIELD_CONFIDENCE_THRESHOLD = 0.65
     POLL_INTERVAL_SECONDS = 5
     MAX_WAIT_SECONDS = 120
     ALB_TIMEOUT_BUFFER_SECONDS = 15
@@ -124,7 +124,6 @@ class ConfigDefaults:
     BEDROCK_CONVERSE_MAX_IMAGE_BYTES = 3_750_000
     BEDROCK_CONVERSE_MAX_IMAGE_DIMENSION_PX = 8000
     DDB_EMIT_CUSTOM_CLOUDWATCH_METRICS = False
-    EMPTY_FIELD_PERCENTAGE_THRESHOLD = 50
     MAX_PAGES_PER_DOCUMENT = 5
 
 
@@ -204,7 +203,6 @@ class ProcessStatus(StrEnum):
     NO_DOCUMENT_DETECTED = "no_document_detected"
     NOT_IMPLEMENTED = "not_implemented"
     NOT_STARTED = "not_started"
-    NOT_SAMPLED = "not_sampled"
     PASSWORD_PROTECTED = "password_protected"
     PENDING_IMAGE_OPTIMIZATION = "pending_image_optimization"
     PENDING_UPLOAD = "pending_upload"
@@ -234,7 +232,6 @@ class ProcessStatus(StrEnum):
             cls.NO_CUSTOM_BLUEPRINT_MATCHED,
             cls.NO_DOCUMENT_DETECTED,
             cls.NOT_IMPLEMENTED,
-            cls.NOT_SAMPLED,
             cls.PASSWORD_PROTECTED,
             cls.SUCCESS,
         ]
@@ -256,7 +253,6 @@ class ProcessStatus(StrEnum):
         return value in [
             cls.SUCCESS,
             cls.NO_CUSTOM_BLUEPRINT_MATCHED,
-            cls.NOT_SAMPLED,
             cls.NOT_IMPLEMENTED,
         ]
 

@@ -307,6 +307,37 @@ def test_tenants_create_empty_display_name_returns_422(client, tenants_table):
     assert response.status_code == 422
 
 
+def test_tenants_create_with_confidence_floor_round_trips(client, tenants_table):
+    _override_jwt(_make_claims(groups=[SUPER_ADMIN]))
+    response = client.post(TENANTS_URL, json={**NEW_TENANT, "extraction_confidence_floor": 0.85})
+    assert response.status_code == 201
+    assert response.json()["extractionConfidenceFloor"] == 0.85
+
+    # Persisted and readable on subsequent GET
+    get_response = client.get(f"{TENANTS_URL}/{TENANT_ID}")
+    assert get_response.json()["extractionConfidenceFloor"] == 0.85
+
+
+def test_tenants_update_confidence_floor_returns_200(client, seed_tenant):
+    _override_jwt(_make_claims(groups=[SUPER_ADMIN]))
+    response = client.patch(f"{TENANTS_URL}/{TENANT_ID}", json={"extraction_confidence_floor": 0.5})
+    assert response.status_code == 200
+    assert response.json()["extractionConfidenceFloor"] == 0.5
+
+
+@pytest.mark.parametrize("floor", [1.5, -0.1])
+def test_tenants_create_out_of_range_confidence_floor_returns_422(client, tenants_table, floor):
+    _override_jwt(_make_claims(groups=[SUPER_ADMIN]))
+    response = client.post(TENANTS_URL, json={**NEW_TENANT, "extraction_confidence_floor": floor})
+    assert response.status_code == 422
+
+
+def test_tenants_update_out_of_range_confidence_floor_returns_422(client, seed_tenant):
+    _override_jwt(_make_claims(groups=[SUPER_ADMIN]))
+    response = client.patch(f"{TENANTS_URL}/{TENANT_ID}", json={"extraction_confidence_floor": 2.0})
+    assert response.status_code == 422
+
+
 def test_tenants_create_invalid_json_returns_422(client, tenants_table):
     _override_jwt(_make_claims(groups=[SUPER_ADMIN]))
     response = client.post(

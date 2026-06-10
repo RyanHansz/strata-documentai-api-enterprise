@@ -168,6 +168,16 @@ def build_v1_api_response(
 
             base_response["fields"] = fields
 
+            # Surface the confidence floor flag, but let missing required fields
+            # take precedence over low confidence as the reported response code.
+            if ddb_record.get(DocumentMetadata.BELOW_EXTRACTION_CONFIDENCE_FLOOR):
+                base_response["belowExtractionConfidenceFloor"] = True
+                if base_response.get("responseCode") != ResponseCodes.MISSING_FIELDS:
+                    base_response["responseCode"] = ResponseCodes.LOW_EXTRACTION_CONFIDENCE
+                    base_response["responseMessage"] = ResponseCodes.get_message(
+                        ResponseCodes.LOW_EXTRACTION_CONFIDENCE
+                    )
+
         elif job_status == ProcessStatus.NO_CUSTOM_BLUEPRINT_MATCHED.value:
             base_response["message"] = "Document processed but no matching template found"
             base_response["fields"] = {}

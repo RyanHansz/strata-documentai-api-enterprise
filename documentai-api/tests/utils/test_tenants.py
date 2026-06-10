@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 
+from documentai_api.config.constants import ConfigDefaults
 from documentai_api.schemas.tenants import TenantRecord
 from documentai_api.utils import tenants as tenants_util
 from documentai_api.utils.auth import UserContext
@@ -112,6 +113,41 @@ def test_deactivate_tenant_success(tenants_table):
 
 def test_deactivate_tenant_not_found(tenants_table):
     assert tenants_util.deactivate_tenant("missing") is False
+
+
+# =============================================================================
+# Extraction confidence floor
+# =============================================================================
+
+
+def test_confidence_floor_uses_tenant_override(tenants_table):
+    _add_tenant(tenants_table, "test-tenant", "Tenant Name")
+    tenants_util.update_tenant("test-tenant", extraction_confidence_floor=0.9)
+
+    assert tenants_util.get_extraction_confidence_floor("test-tenant") == 0.9
+
+
+def test_confidence_floor_falls_back_to_default_when_unset(tenants_table):
+    _add_tenant(tenants_table, "test-tenant", "Tenant Name")
+
+    assert (
+        tenants_util.get_extraction_confidence_floor("test-tenant")
+        == ConfigDefaults.FIELD_CONFIDENCE_THRESHOLD
+    )
+
+
+def test_confidence_floor_falls_back_to_default_for_missing_tenant(tenants_table):
+    assert (
+        tenants_util.get_extraction_confidence_floor("missing")
+        == ConfigDefaults.FIELD_CONFIDENCE_THRESHOLD
+    )
+
+
+def test_confidence_floor_falls_back_to_default_for_none_tenant(tenants_table):
+    assert (
+        tenants_util.get_extraction_confidence_floor(None)
+        == ConfigDefaults.FIELD_CONFIDENCE_THRESHOLD
+    )
 
 
 # =============================================================================

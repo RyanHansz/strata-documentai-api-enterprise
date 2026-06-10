@@ -67,3 +67,4 @@ class DocumentMetadata:
     BDA_MATCHED_BLUEPRINT_FIELD_NOT_EMPTY_AVG_CONFIDENCE = (
         "matchedBlueprintFieldNotEmptyAvgConfidence"
     )
+    BELOW_EXTRACTION_CONFIDENCE_FLOOR = "belowExtractionConfidenceFloor"

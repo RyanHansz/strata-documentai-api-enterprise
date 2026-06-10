@@ -138,3 +138,42 @@ def test_process_bda_output_no_matching_blueprint(text, expected_status, expecte
 
         mock_classify_method.assert_called_once()
         assert result == expected_status
+
+
+# =============================================================================
+# Extraction confidence floor
+# =============================================================================
+
+
+@pytest.mark.parametrize(
+    ("field_confidence_map_list", "empty_fields", "floor", "expected"),
+    [
+        # avg of non-empty fields below floor -> True
+        ([{"a": 0.5}, {"b": 0.6}], [], 0.7, True),
+        # avg of non-empty fields at/above floor -> False
+        ([{"a": 0.8}, {"b": 0.9}], [], 0.7, False),
+        ([{"a": 0.7}], [], 0.7, False),  # exactly at floor is not "below"
+        # empty fields are excluded from the average
+        ([{"a": 0.9}, {"b": 0.1}], ["b"], 0.7, False),
+        # no fields extracted -> not below floor
+        ([], [], 0.7, False),
+        # every field empty -> no scores -> not below floor
+        ([{"a": 0.1}], ["a"], 0.7, False),
+    ],
+)
+def test_is_below_extraction_confidence_floor(
+    field_confidence_map_list, empty_fields, floor, expected
+):
+    results = bda_output_processor_util.BdaProcessingResults(
+        field_confidence_map_list=field_confidence_map_list,
+        empty_field_list=empty_fields,
+    )
+    with patch(
+        "documentai_api.utils.bda_output_processor.get_extraction_confidence_floor",
+        return_value=floor,
+    ):
+        result = bda_output_processor_util._is_below_extraction_confidence_floor(
+            results, "test-tenant"
+        )
+
+    assert result is expected
